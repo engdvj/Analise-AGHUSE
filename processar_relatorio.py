@@ -211,83 +211,491 @@ def analisar_horarios_problematicos(dados_por_dia):
 
     return dict(horarios_problemas), dict(horarios_latencia_alta)
 
+def analisar_latencia_por_horario(dados_lista):
+    """Analisa latência média por faixa horária"""
+    latencia_por_hora = defaultdict(list)
+    perda_por_hora = defaultdict(list)
+
+    for d in dados_lista:
+        hora_int = int(d['hora'].split(':')[0])
+
+        if d['ping_aghuse']['media']:
+            latencia_por_hora[hora_int].append(d['ping_aghuse']['media'])
+
+        if d['ping_aghuse']['perda'] is not None:
+            perda_por_hora[hora_int].append(d['ping_aghuse']['perda'])
+
+    # Calcular estatísticas por hora
+    stats_por_hora = {}
+    for hora in latencia_por_hora.keys():
+        latencias = latencia_por_hora[hora]
+        perdas = perda_por_hora.get(hora, [])
+
+        testes_com_perda = sum(1 for p in perdas if p > 0)
+
+        stats_por_hora[hora] = {
+            'media': sum(latencias) / len(latencias),
+            'min': min(latencias),
+            'max': max(latencias),
+            'testes': len(latencias),
+            'testes_com_perda': testes_com_perda,
+            'perda_total': sum(perdas)
+        }
+
+    return stats_por_hora
+
+def gerar_grafico_barras_ascii(valores, largura_max=40):
+    """Gera gráfico de barras ASCII"""
+    if not valores:
+        return []
+
+    max_valor = max(v for v in valores.values() if v is not None)
+    if max_valor == 0:
+        max_valor = 1
+
+    linhas = []
+    for hora in sorted(valores.keys()):
+        valor = valores[hora]
+        if valor is None:
+            continue
+
+        barra_tamanho = int((valor / max_valor) * largura_max)
+        barra = '█' * barra_tamanho
+        linhas.append(f"{hora:02d}h │{barra} {valor:.1f}ms")
+
+    return linhas
+
+def classificar_faixa_horaria(stats):
+    """Classifica uma faixa horária com base em múltiplos critérios"""
+    latencia = stats['media']
+    perda = stats['testes_com_perda']
+
+    # Pontuação baseada em latência
+    if latencia < 10:
+        score_latencia = 4
+    elif latencia < 20:
+        score_latencia = 3
+    elif latencia < 50:
+        score_latencia = 2
+    else:
+        score_latencia = 1
+
+    # Pontuação baseada em perda
+    if perda == 0:
+        score_perda = 4
+    elif perda <= 2:
+        score_perda = 3
+    elif perda <= 5:
+        score_perda = 2
+    else:
+        score_perda = 1
+
+    # Score final (média ponderada: latência 60%, perda 40%)
+    score_final = (score_latencia * 0.6) + (score_perda * 0.4)
+
+    if score_final >= 3.5:
+        return "Ótimo", "excelente"
+    elif score_final >= 2.5:
+        return "Bom", "boa"
+    elif score_final >= 1.5:
+        return "Regular", "regular"
+    else:
+        return "Ruim", "ruim"
+
+# ============================================
+# FUNÇÕES AUXILIARES REUTILIZÁVEIS
+# ============================================
+
+def gerar_analise_disponibilidade(disponibilidade):
+    """Gera análise de disponibilidade reutilizável para todos os relatórios"""
+    if disponibilidade >= 99.9:
+        return f"**Conexão**: {disponibilidade:.2f}% - Ótima\n\n"
+    elif disponibilidade >= 99.0:
+        return f"**Conexão**: {disponibilidade:.2f}% - Boa\n\n"
+    elif disponibilidade >= 95.0:
+        return f"**Conexão**: {disponibilidade:.2f}% - Regular\n\n"
+    else:
+        return f"**Conexão**: {disponibilidade:.2f}% - Ruim\n\n"
+
+def gerar_analise_qualidade_horaria(stats_latencia_hora, titulo="**Resumo por Horário**"):
+    """Gera análise de qualidade por faixa horária reutilizável"""
+    if not stats_latencia_hora:
+        return ""
+
+    md = []
+    contagem_categorias = {"excelente": [], "boa": [], "regular": [], "ruim": []}
+
+    for hora, s in stats_latencia_hora.items():
+        _, categoria = classificar_faixa_horaria(s)
+        contagem_categorias[categoria].append(hora)
+
+    total_faixas = len(stats_latencia_hora)
+
+    # Mostrar apenas resumo compacto
+    md.append(f"{titulo}: ")
+
+    partes = []
+    if contagem_categorias['excelente']:
+        partes.append(f"{len(contagem_categorias['excelente'])}/{total_faixas} ótimo")
+    if contagem_categorias['boa']:
+        partes.append(f"{len(contagem_categorias['boa'])}/{total_faixas} bom")
+    if contagem_categorias['regular']:
+        partes.append(f"{len(contagem_categorias['regular'])}/{total_faixas} regular")
+    if contagem_categorias['ruim']:
+        partes.append(f"{len(contagem_categorias['ruim'])}/{total_faixas} ruim")
+
+    md.append(" | ".join(partes))
+    md.append("\n\n")
+
+    return ''.join(md)
+
+def gerar_tabela_latencia_horaria(stats_latencia_hora, incluir_grafico=True):
+    """Gera tabela de latência por faixa horária com gráfico opcional"""
+    if not stats_latencia_hora:
+        return "*Nenhum dado disponível.*\n\n"
+
+    md = []
+
+    # Tabela simplificada - apenas o essencial
+    md.append("| Horário | Latência (ms) | Status |\n")
+    md.append("|---------|---------------|--------|\n")
+
+    for hora in sorted(stats_latencia_hora.keys()):
+        s = stats_latencia_hora[hora]
+        classificacao, _ = classificar_faixa_horaria(s)
+
+        # Adicionar alerta se tiver perda
+        if s['testes_com_perda'] > 0:
+            alerta = f" [{s['testes_com_perda']} perda(s)]"
+        else:
+            alerta = ""
+
+        md.append(f"| {hora:02d}h | {s['media']:.1f} ({s['min']}-{s['max']}) | {classificacao}{alerta} |\n")
+
+    md.append("\n")
+
+    if incluir_grafico:
+        md.append("**Gráfico de Latência:**\n\n")
+        md.append("```\n")
+        valores_latencia = {hora: s['media'] for hora, s in stats_latencia_hora.items()}
+        grafico_linhas = gerar_grafico_barras_ascii(valores_latencia)
+        for linha in grafico_linhas:
+            md.append(linha + "\n")
+        md.append("```\n\n")
+
+    return ''.join(md)
+
+# ============================================
+# FUNÇÕES DE MÉTRICAS AVANÇADAS
+# ============================================
+
+def calcular_jitter_e_estabilidade(dados_lista):
+    """Calcula jitter (variação de latência) e métricas de estabilidade"""
+    import statistics
+
+    if not dados_lista or len(dados_lista) < 2:
+        return None
+
+    # Extrair latências válidas
+    latencias = [d['ping_aghuse']['media'] for d in dados_lista if d['ping_aghuse']['media'] > 0]
+
+    if len(latencias) < 2:
+        return None
+
+    # Calcular jitter (variação entre medições consecutivas)
+    jitters = [abs(latencias[i] - latencias[i-1]) for i in range(1, len(latencias))]
+    jitter_medio = statistics.mean(jitters) if jitters else 0
+
+    # Calcular desvio padrão e coeficiente de variação
+    media_latencia = statistics.mean(latencias)
+    desvio_padrao = statistics.stdev(latencias) if len(latencias) > 1 else 0
+    coef_variacao = (desvio_padrao / media_latencia * 100) if media_latencia > 0 else 0
+
+    # Score de estabilidade (0-10, onde 10 é mais estável)
+    # Baseado em jitter e coeficiente de variação
+    if jitter_medio < 2 and coef_variacao < 10:
+        score_estabilidade = 10
+    elif jitter_medio < 5 and coef_variacao < 20:
+        score_estabilidade = 8
+    elif jitter_medio < 10 and coef_variacao < 30:
+        score_estabilidade = 6
+    elif jitter_medio < 15 and coef_variacao < 40:
+        score_estabilidade = 4
+    else:
+        score_estabilidade = 2
+
+    return {
+        'jitter_medio': round(jitter_medio, 2),
+        'jitter_min': min(jitters) if jitters else 0,
+        'jitter_max': max(jitters) if jitters else 0,
+        'desvio_padrao': round(desvio_padrao, 2),
+        'coef_variacao': round(coef_variacao, 2),
+        'score_estabilidade': score_estabilidade,
+        'classificacao': 'Excelente' if score_estabilidade >= 8 else 'Boa' if score_estabilidade >= 6 else 'Regular' if score_estabilidade >= 4 else 'Ruim'
+    }
+
+def calcular_percentis_sla(latencias):
+    """Calcula percentis de latência para compliance SLA"""
+    import statistics
+
+    if not latencias:
+        return None
+
+    latencias_ordenadas = sorted(latencias)
+    n = len(latencias_ordenadas)
+
+    def percentil(p):
+        """Calcula o percentil p (0-100)"""
+        if n == 0:
+            return 0
+        k = (n - 1) * p / 100
+        f = int(k)
+        c = k - f
+        if f + 1 < n:
+            return latencias_ordenadas[f] + c * (latencias_ordenadas[f + 1] - latencias_ordenadas[f])
+        return latencias_ordenadas[f]
+
+    return {
+        'p50': round(percentil(50), 1),   # Mediana
+        'p95': round(percentil(95), 1),   # SLA comum
+        'p99': round(percentil(99), 1),   # SLA rigoroso
+        'p99_9': round(percentil(99.9), 1)  # SLA muito rigoroso
+    }
+
+# ============================================
+# FUNÇÕES DE VISUALIZAÇÃO AVANÇADAS
+# ============================================
+
+def gerar_gauge_sla(disponibilidade, target=99.5):
+    """Gera visualização gauge de SLA em ASCII"""
+    md = []
+    md.append("```\n")
+    md.append("═══════════════════════════════════════\n")
+    md.append("    DISPONIBILIDADE vs SLA TARGET\n")
+    md.append("═══════════════════════════════════════\n\n")
+    md.append(f"Target: {target}%    Atual: {disponibilidade:.2f}%\n\n")
+
+    # Criar barra de progresso
+    largura_total = 30
+    posicao_atual = int((disponibilidade / 100) * largura_total)
+    posicao_target = int((target / 100) * largura_total)
+
+    barra = ""
+    for i in range(largura_total):
+        if i < posicao_atual:
+            barra += "█"
+        elif i == posicao_atual:
+            barra += "▓"
+        else:
+            barra += "░"
+
+    md.append(f"   |{barra}| {disponibilidade:.2f}%\n")
+    md.append("   0%        50%      99.5%    100%\n")
+    md.append(" " * (posicao_target + 3) + "↑\n")
+    md.append(" " * (posicao_target + 1) + "Target\n\n")
+
+    # Status
+    diferenca = disponibilidade - target
+    if diferenca >= 0:
+        md.append(f"Status: ✅ ACIMA DO SLA (+{diferenca:.2f}%)\n")
+    else:
+        md.append(f"Status: ❌ ABAIXO DO SLA ({diferenca:.2f}%)\n")
+
+    md.append("```\n\n")
+    return ''.join(md)
+
+def gerar_sparkline(valores, largura=30):
+    """Gera sparkline (mini gráfico inline) para tendências"""
+    if not valores or len(valores) < 2:
+        return "─" * largura
+
+    # Normalizar valores para 0-7 (8 níveis de blocos)
+    min_val = min(valores)
+    max_val = max(valores)
+    range_val = max_val - min_val if max_val > min_val else 1
+
+    blocos = " ▁▂▃▄▅▆▇█"
+
+    sparkline = ""
+    for v in valores:
+        nivel = int(((v - min_val) / range_val) * 7)
+        sparkline += blocos[nivel + 1]
+
+    # Ajustar ao tamanho desejado
+    if len(sparkline) > largura:
+        # Amostrar valores uniformemente
+        step = len(valores) / largura
+        sparkline = "".join([blocos[int(((valores[int(i * step)] - min_val) / range_val) * 7) + 1] for i in range(largura)])
+    elif len(sparkline) < largura:
+        # Preencher com espaços
+        sparkline += " " * (largura - len(sparkline))
+
+    return sparkline
+
+def analisar_comparacao_endpoints(dados_lista):
+    """Compara AGHUSE vs Interno vs Externo para identificar origem do problema"""
+    if not dados_lista:
+        return None
+
+    # Coletar latências de cada endpoint
+    latencias_aghuse = [d['ping_aghuse']['media'] for d in dados_lista if d['ping_aghuse']['media'] > 0]
+    latencias_interno = [d['ping_interno']['media'] for d in dados_lista if d['ping_interno']['media'] > 0]
+    latencias_externo = [d['ping_externo']['media'] for d in dados_lista if d['ping_externo']['media'] > 0]
+
+    if not (latencias_aghuse and latencias_interno and latencias_externo):
+        return None
+
+    import statistics
+
+    # Calcular médias
+    media_aghuse = statistics.mean(latencias_aghuse)
+    media_interno = statistics.mean(latencias_interno)
+    media_externo = statistics.mean(latencias_externo)
+
+    # Calcular diferenças percentuais
+    diff_aghuse_interno = ((media_aghuse - media_interno) / media_interno * 100) if media_interno > 0 else 0
+    diff_aghuse_externo = ((media_aghuse - media_externo) / media_externo * 100) if media_externo > 0 else 0
+    diff_interno_externo = ((media_interno - media_externo) / media_externo * 100) if media_externo > 0 else 0
+
+    # Diagnosticar causa provável
+    diagnostico = "Normal"
+    if media_aghuse > media_externo * 1.5:  # AGHUSE 50% mais lento que externo
+        diagnostico = "AGHUSE"
+    elif media_interno > media_externo * 1.3:  # Rede interna 30% mais lenta
+        diagnostico = "Rede Interna"
+    elif media_externo > 50:  # Internet muito lenta
+        diagnostico = "ISP/Internet"
+
+    return {
+        'media_aghuse': round(media_aghuse, 1),
+        'media_interno': round(media_interno, 1),
+        'media_externo': round(media_externo, 1),
+        'diff_aghuse_interno': round(diff_aghuse_interno, 1),
+        'diff_aghuse_externo': round(diff_aghuse_externo, 1),
+        'diff_interno_externo': round(diff_interno_externo, 1),
+        'diagnostico': diagnostico
+    }
+
+def gerar_comparacao_3_endpoints(comparacao):
+    """Gera visualização de comparação entre 3 endpoints"""
+    if not comparacao:
+        return ""
+
+    md = []
+    md.append("### Comparação Multi-Endpoint (Diagnóstico de Causa)\n\n")
+    md.append("```\n")
+    md.append("Latência Média por Destino\n\n")
+
+    # Encontrar valor máximo para escalar as barras
+    max_val = max(comparacao['media_aghuse'], comparacao['media_interno'], comparacao['media_externo'])
+    largura_max = 30
+
+    def gerar_barra(valor, max_valor, largura):
+        tamanho = int((valor / max_valor) * largura) if max_valor > 0 else 0
+        return "█" * tamanho + "░" * (largura - tamanho)
+
+    md.append(f"AGHUSE     {gerar_barra(comparacao['media_aghuse'], max_val, largura_max)} {comparacao['media_aghuse']}ms\n")
+    md.append(f"Interno    {gerar_barra(comparacao['media_interno'], max_val, largura_max)} {comparacao['media_interno']}ms\n")
+    md.append(f"Externo    {gerar_barra(comparacao['media_externo'], max_val, largura_max)} {comparacao['media_externo']}ms\n\n")
+
+    # Diagnóstico
+    if comparacao['diagnostico'] == "AGHUSE":
+        md.append(f"Diagnóstico: ⚠️ AGHUSE +{abs(comparacao['diff_aghuse_externo']):.0f}% acima do externo → Problema no servidor\n")
+    elif comparacao['diagnostico'] == "Rede Interna":
+        md.append(f"Diagnóstico: ⚠️ Rede interna +{abs(comparacao['diff_interno_externo']):.0f}% acima do externo → Problema na rede local\n")
+    elif comparacao['diagnostico'] == "ISP/Internet":
+        md.append(f"Diagnóstico: ⚠️ Latência externa elevada ({comparacao['media_externo']}ms) → Problema no ISP/Internet\n")
+    else:
+        md.append("Diagnóstico: ✅ Todos os endpoints com latência normal\n")
+
+    md.append("```\n\n")
+    return ''.join(md)
+
 def gerar_relatorio_diario(dia, dados_dia, stats):
     """Gera relatório diário em formato markdown"""
     md = []
 
     data_formatada = dia.strftime("%d/%m/%Y")
-    md.append(f"# Relatório Diário - Conectividade AGHUSE\n")
-    md.append(f"**Data**: {data_formatada}\n\n")
+    md.append(f"# Relatório AGHUSE - {data_formatada}\n\n")
 
-    # Sumário Executivo
-    md.append("## Sumário Executivo\n\n")
-    md.append("| Métrica | Valor |\n")
-    md.append("|---------|-------|\n")
-    md.append(f"| Total de Testes Executados | {stats['total_testes']} |\n")
-    md.append(f"| Testes sem Perda | {stats['testes_sem_perda']} |\n")
-    md.append(f"| Testes com Perda | {stats['testes_com_perda']} |\n")
-    md.append(f"| Total de Pacotes Enviados | {stats['total_pacotes_enviados']} |\n")
-    md.append(f"| Total de Pacotes Perdidos | {stats['total_pacotes_perdidos']} |\n")
-    md.append(f"| **Disponibilidade** | **{stats['disponibilidade']:.2f}%** |\n\n")
+    # Status Geral
+    md.append("## Status do Dia\n\n")
 
-    # Métricas de Latência
-    md.append("## Métricas de Latência\n\n")
-    md.append("| Destino | Latência Média (ms) | Mínima (ms) | Máxima (ms) |\n")
-    md.append("|---------|---------------------|-------------|-------------|\n")
-    md.append(f"| AGHUSE (10.252.17.132) | {stats['aghuse_media']:.1f} | {stats['aghuse_min']} | {stats['aghuse_max']} |\n")
-    md.append(f"| IP Interno (10.252.17.132) | {stats['interno_media']:.1f} | - | - |\n")
-    md.append(f"| Google DNS (8.8.8.8) | {stats['externo_media']:.1f} | - | - |\n\n")
+    # Disponibilidade em destaque
+    if stats['disponibilidade'] >= 99.9:
+        status_disp = "ÓTIMO"
+    elif stats['disponibilidade'] >= 99.0:
+        status_disp = "BOM"
+    elif stats['disponibilidade'] >= 95.0:
+        status_disp = "REGULAR"
+    else:
+        status_disp = "RUIM"
 
-    # Incidentes com Perda de Pacotes
+    md.append(f"**Conexão: {stats['disponibilidade']:.2f}%** - {status_disp}\n\n")
+
+    # Problemas detectados (se houver)
+    problemas = []
     if stats['testes_com_perda'] > 0:
-        md.append("## Incidentes com Perda de Pacotes\n\n")
-        md.append(f"Total de {stats['testes_com_perda']} teste(s) apresentaram perda de pacotes:\n\n")
-        md.append("| Horário | Latência Média (ms) | Perda (%) | Latência Min/Max (ms) |\n")
-        md.append("|---------|---------------------|-----------|----------------------|\n")
-        for d in stats['lista_testes_com_perda']:
-            md.append(f"| {d['hora']} | {d['ping_aghuse']['media']} | {d['ping_aghuse']['perda']} | {d['ping_aghuse']['min']}/{d['ping_aghuse']['max']} |\n")
+        problemas.append(f"{stats['testes_com_perda']} horários com perda de conexão")
+    if stats['latencia_alta_count'] > 0:
+        problemas.append(f"{stats['latencia_alta_count']} horários com lentidão")
+
+    if problemas:
+        md.append("**Problemas:**\n")
+        for p in problemas:
+            md.append(f"- {p}\n")
         md.append("\n")
 
-    # Testes com Latência Elevada
-    if stats['latencia_alta_count'] > 0:
-        md.append("## Testes com Latência Elevada\n\n")
-        md.append(f"- **Quantidade**: {stats['latencia_alta_count']} teste(s) com latência superior a 20ms\n")
-        horarios = ', '.join(stats['horarios_latencia_alta'][:10])
-        if len(stats['horarios_latencia_alta']) > 10:
-            horarios += f" (e mais {len(stats['horarios_latencia_alta']) - 10})"
-        md.append(f"- **Horários**: {horarios}\n\n")
+    # Análise por Horário (usando função reutilizável)
+    md.append("## Desempenho por Horário\n\n")
+    stats_latencia_hora = analisar_latencia_por_horario(dados_dia)
+    md.append(gerar_tabela_latencia_horaria(stats_latencia_hora, incluir_grafico=True))
 
-    # Detalhamento por Horário
-    md.append("## Detalhamento por Horário\n\n")
-    md.append("| Horário | Latência (ms) | Min/Max (ms) | Perda (%) |\n")
-    md.append("|---------|---------------|--------------|----------|\n")
+    # Métricas de Qualidade (simplificado)
+    jitter_stats = calcular_jitter_e_estabilidade(dados_dia)
+    latencias = [d['ping_aghuse']['media'] for d in dados_dia if d['ping_aghuse']['media'] > 0]
+    percentis = calcular_percentis_sla(latencias)
+    comparacao = analisar_comparacao_endpoints(dados_dia)
 
-    for d in dados_dia:
-        perda_text = "0" if d['ping_aghuse']['perda'] == 0 else str(d['ping_aghuse']['perda'])
-        md.append(f"| {d['hora']} | {d['ping_aghuse']['media']} | {d['ping_aghuse']['min']}/{d['ping_aghuse']['max']} | {perda_text} |\n")
+    if jitter_stats or percentis or comparacao:
+        md.append("## Análise Técnica\n\n")
 
-    # Análise e Conclusão
-    md.append(f"\n## Análise e Conclusão\n\n")
+        if percentis:
+            md.append(f"**Tempo de resposta:** Típico {percentis['p50']}ms | 95% dos casos abaixo de {percentis['p95']}ms\n\n")
 
-    # Análise de disponibilidade
-    if stats['disponibilidade'] >= 99.9:
-        md.append(f"**Disponibilidade**: {stats['disponibilidade']:.2f}% - Excelente. Sistema operando dentro dos parâmetros SLA.\n\n")
-    elif stats['disponibilidade'] >= 99.0:
-        md.append(f"**Disponibilidade**: {stats['disponibilidade']:.2f}% - Boa. Sistema operacional com pequenos desvios.\n\n")
-    elif stats['disponibilidade'] >= 95.0:
-        md.append(f"**Disponibilidade**: {stats['disponibilidade']:.2f}% - Aceitável. Recomenda-se monitoramento.\n\n")
-    else:
-        md.append(f"**Disponibilidade**: {stats['disponibilidade']:.2f}% - Crítica. Requer investigação imediata.\n\n")
+        if jitter_stats:
+            md.append(f"**Estabilidade:** {jitter_stats['classificacao']} (variação {jitter_stats['jitter_medio']}ms)\n\n")
 
-    # Análise de latência
-    if stats['aghuse_media'] < 10:
-        md.append(f"**Latência**: Média de {stats['aghuse_media']:.1f}ms - Excelente performance de rede.\n\n")
-    elif stats['aghuse_media'] < 20:
-        md.append(f"**Latência**: Média de {stats['aghuse_media']:.1f}ms - Performance adequada.\n\n")
-    elif stats['aghuse_media'] < 50:
-        md.append(f"**Latência**: Média de {stats['aghuse_media']:.1f}ms - Performance aceitável, monitorar tendências.\n\n")
-    else:
-        md.append(f"**Latência**: Média de {stats['aghuse_media']:.1f}ms - Performance degradada, investigação necessária.\n\n")
+        if comparacao:
+            md.append(f"**Comparativo de destinos:**\n")
+            md.append(f"- AGHUSE: {comparacao['media_aghuse']}ms\n")
+            md.append(f"- Rede interna: {comparacao['media_interno']}ms\n")
+            md.append(f"- Internet: {comparacao['media_externo']}ms\n")
+
+            if comparacao['diagnostico'] != "Normal":
+                md.append(f"\n")
+                if comparacao['diagnostico'] == "AGHUSE":
+                    md.append(f"Problema identificado: AGHUSE {abs(comparacao['diff_aghuse_externo']):.0f}% mais lento que o normal\n")
+                elif comparacao['diagnostico'] == "Rede Interna":
+                    md.append(f"Problema identificado: Rede interna com lentidão\n")
+                elif comparacao['diagnostico'] == "ISP/Internet":
+                    md.append(f"Problema identificado: Conexão com internet lenta\n")
+            md.append("\n")
+
+    # Detalhes de problemas (se houver)
+    if stats['testes_com_perda'] > 0:
+        md.append("## Detalhes de Problemas\n\n")
+        md.append(f"**Perda de Pacotes:** {stats['testes_com_perda']} ocorrências\n")
+        horarios_perda = [d['hora'] for d in stats['lista_testes_com_perda'][:8]]
+        md.append(f"- {', '.join(horarios_perda)}")
+        if len(stats['lista_testes_com_perda']) > 8:
+            md.append(f" e mais {len(stats['lista_testes_com_perda']) - 8}")
+        md.append("\n\n")
+
+    # Conclusão
+    md.append("## Resumo\n\n")
+    md.append(gerar_analise_disponibilidade(stats['disponibilidade']))
+    md.append(gerar_analise_qualidade_horaria(stats_latencia_hora))
 
     return ''.join(md)
 
@@ -340,11 +748,20 @@ def gerar_relatorio_semanal(dados_por_dia):
 
         md.append(f"| {data_fmt} | {stats['total_testes']} | {stats['testes_sem_perda']} / {stats['testes_com_perda']} | {stats['total_pacotes_perdidos']} | {stats['disponibilidade']:.2f}% | {stats['aghuse_media']:.1f}ms |\n")
 
+    # Análise de Latência por Faixa Horária
+    stats_latencia_hora = analisar_latencia_por_horario(todos_dados)
+    if stats_latencia_hora:
+        md.append("\n## Análise de Latência por Faixa Horária\n\n")
+        md.append(f"> **Nota**: Esta análise consolida todos os testes realizados em cada faixa horária\n")
+        md.append(f"> ao longo do período completo ({primeira_data} a {ultima_data}).\n")
+        md.append(f"> Cada linha representa a média de todos os testes naquela hora em todos os dias.\n\n")
+        md.append(gerar_tabela_latencia_horaria(stats_latencia_hora, incluir_grafico=True))
+
     # Análise de Horários Críticos
     horarios_problemas, horarios_latencia = analisar_horarios_problematicos(dados_por_dia)
 
     if horarios_problemas:
-        md.append("\n## Análise de Horários Críticos\n\n")
+        md.append("## Análise de Horários Críticos\n\n")
         md.append("### Distribuição de Perda de Pacotes por Horário\n\n")
         md.append("| Faixa Horária | Ocorrências | Porcentagem do Total |\n")
         md.append("|---------------|-------------|---------------------|\n")
@@ -356,7 +773,7 @@ def gerar_relatorio_semanal(dados_por_dia):
         md.append("\n")
 
     if horarios_latencia:
-        md.append("### Distribuição de Latência Elevada por Horário\n\n")
+        md.append("### Distribuição de Latência Elevada (>20ms) por Horário\n\n")
         md.append("| Faixa Horária | Ocorrências |\n")
         md.append("|---------------|-------------|\n")
 
@@ -380,22 +797,10 @@ def gerar_relatorio_semanal(dados_por_dia):
             md.append(f"\n*Exibindo 20 de {len(stats_geral['lista_testes_com_perda'])} incidentes. Consulte relatórios diários para detalhes completos.*\n")
         md.append("\n")
 
-    # Análise e Conclusão
+    # Análise e Conclusão (usando funções reutilizáveis)
     md.append("## Análise e Conclusão\n\n")
-
-    if stats_geral['disponibilidade'] >= 99.9:
-        md.append(f"**Disponibilidade**: {stats_geral['disponibilidade']:.2f}% - Excelente. Sistema operando conforme SLA.\n\n")
-    elif stats_geral['disponibilidade'] >= 99.0:
-        md.append(f"**Disponibilidade**: {stats_geral['disponibilidade']:.2f}% - Boa. Sistema operacional dentro dos parâmetros.\n\n")
-    elif stats_geral['disponibilidade'] >= 95.0:
-        md.append(f"**Disponibilidade**: {stats_geral['disponibilidade']:.2f}% - Aceitável. Requer monitoramento contínuo.\n\n")
-    else:
-        md.append(f"**Disponibilidade**: {stats_geral['disponibilidade']:.2f}% - Crítica. Requer ação corretiva imediata.\n\n")
-
-    if stats_geral['aghuse_media'] < 20:
-        md.append(f"**Latência**: Média de {stats_geral['aghuse_media']:.1f}ms - Performance adequada.\n\n")
-    else:
-        md.append(f"**Latência**: Média de {stats_geral['aghuse_media']:.1f}ms - Monitorar tendências.\n\n")
+    md.append(gerar_analise_disponibilidade(stats_geral['disponibilidade']))
+    md.append(gerar_analise_qualidade_horaria(stats_latencia_hora, titulo="**Qualidade por Faixa Horária no Período**"))
 
     return ''.join(md)
 
@@ -436,13 +841,14 @@ def gerar_relatorio_geral(dados_por_dia):
     md.append(f"| Total de Pacotes Perdidos | {stats_geral['total_pacotes_perdidos']} |\n")
     md.append(f"| **Disponibilidade** | **{stats_geral['disponibilidade']:.2f}%** |\n\n")
 
-    # Métricas de Latência
-    md.append("## Métricas de Latência\n\n")
-    md.append("| Destino | Latência Média (ms) | Mínima (ms) | Máxima (ms) |\n")
-    md.append("|---------|---------------------|-------------|-------------|\n")
-    md.append(f"| AGHUSE (10.252.17.132) | {stats_geral['aghuse_media']:.1f} | {stats_geral['aghuse_min']} | {stats_geral['aghuse_max']} |\n")
-    md.append(f"| IP Interno (10.252.17.132) | {stats_geral['interno_media']:.1f} | - | - |\n")
-    md.append(f"| Google DNS (8.8.8.8) | {stats_geral['externo_media']:.1f} | - | - |\n\n")
+    # Análise de Latência por Faixa Horária
+    md.append("## Análise de Latência por Faixa Horária\n\n")
+    md.append(f"> **Nota**: Esta análise consolida todos os testes realizados em cada faixa horária\n")
+    md.append(f"> ao longo do período completo ({primeira_data} a {ultima_data}, {total_dias} dias).\n")
+    md.append(f"> Cada linha representa a média de todos os testes naquela hora em todos os dias.\n\n")
+
+    stats_latencia_hora = analisar_latencia_por_horario(todos_dados)
+    md.append(gerar_tabela_latencia_horaria(stats_latencia_hora, incluir_grafico=True))
 
     # Análise por Dia
     md.append("## Análise por Dia\n\n")
@@ -504,34 +910,24 @@ def gerar_relatorio_geral(dados_por_dia):
     # Análise e Conclusão
     md.append("## Análise e Conclusão\n\n")
 
+    # Análise de disponibilidade com recomendações (usando função reutilizável + recomendações)
+    md.append(gerar_analise_disponibilidade(stats_geral['disponibilidade']).rstrip('\n'))
+
+    # Adicionar recomendações específicas baseadas na disponibilidade
     if stats_geral['disponibilidade'] >= 99.9:
-        md.append(f"**Disponibilidade**: {stats_geral['disponibilidade']:.2f}% - Excelente. Sistema operando conforme SLA.\n")
         md.append("- Manter monitoramento contínuo\n\n")
     elif stats_geral['disponibilidade'] >= 99.0:
-        md.append(f"**Disponibilidade**: {stats_geral['disponibilidade']:.2f}% - Boa. Sistema operando dentro dos parâmetros.\n")
         md.append("- Acompanhar tendências\n\n")
     elif stats_geral['disponibilidade'] >= 95.0:
-        md.append(f"**Disponibilidade**: {stats_geral['disponibilidade']:.2f}% - Aceitável. Sistema apresenta instabilidades.\n")
         md.append("- Recomenda-se análise dos horários críticos\n")
         md.append("- Implementar monitoramento mais granular\n\n")
     else:
-        md.append(f"**Disponibilidade**: {stats_geral['disponibilidade']:.2f}% - Crítica. Sistema apresenta problemas significativos.\n")
         md.append("- Requer ação corretiva imediata\n")
         md.append("- Revisar infraestrutura de rede\n")
         md.append("- Analisar logs e traceroutes dos horários críticos\n\n")
 
-    if stats_geral['aghuse_media'] < 10:
-        md.append(f"**Latência**: Média de {stats_geral['aghuse_media']:.1f}ms - Excelente performance de rede.\n\n")
-    elif stats_geral['aghuse_media'] < 20:
-        md.append(f"**Latência**: Média de {stats_geral['aghuse_media']:.1f}ms - Performance adequada.\n\n")
-    elif stats_geral['aghuse_media'] < 50:
-        md.append(f"**Latência**: Média de {stats_geral['aghuse_media']:.1f}ms - Performance aceitável. Monitorar tendências.\n\n")
-    else:
-        md.append(f"**Latência**: Média de {stats_geral['aghuse_media']:.1f}ms - Performance degradada. Investigação necessária.\n\n")
-
-    if stats_geral['latencia_alta_count'] > 0:
-        percent_alta = (stats_geral['latencia_alta_count'] / stats_geral['total_testes']) * 100
-        md.append(f"**Obs**: {stats_geral['latencia_alta_count']} testes ({percent_alta:.1f}%) apresentaram latência superior a 20ms.\n\n")
+    # Análise de qualidade por faixa horária (usando função reutilizável)
+    md.append(gerar_analise_qualidade_horaria(stats_latencia_hora, titulo="**Qualidade por Faixa Horária no Período Completo**"))
 
     md.append("---\n")
     md.append(f"*Relatório gerado automaticamente a partir de {stats_geral['total_testes']} testes realizados em {total_dias} dias*\n")

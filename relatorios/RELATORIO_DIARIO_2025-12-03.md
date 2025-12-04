@@ -1,64 +1,47 @@
-# Relatório Diário - Conectividade AGHUSE
-**Data**: 03/12/2025
+# Relatório AGHUSE - 03/12/2025
 
-## Sumário Executivo
+## Status do Dia
 
-| Métrica | Valor |
-|---------|-------|
-| Total de Testes Executados | 22 |
-| Testes sem Perda | 20 |
-| Testes com Perda | 2 |
-| Total de Pacotes Enviados | 440 |
-| Total de Pacotes Perdidos | 2 |
-| **Disponibilidade** | **99.55%** |
+**Conexão: 99.55%** - BOM
 
-## Métricas de Latência
+**Problemas:**
+- 2 horários com perda de conexão
 
-| Destino | Latência Média (ms) | Mínima (ms) | Máxima (ms) |
-|---------|---------------------|-------------|-------------|
-| AGHUSE (10.252.17.132) | 7.8 | 7 | 24 |
-| IP Interno (10.252.17.132) | 7.5 | - | - |
-| Google DNS (8.8.8.8) | 45.0 | - | - |
+## Desempenho por Horário
 
-## Incidentes com Perda de Pacotes
+| Horário | Latência (ms) | Status |
+|---------|---------------|--------|
+| 21h | 11.0 (11-11) | Bom |
+| 22h | 7.4 (7-9) | Ótimo [2 perda(s)] |
+| 23h | 7.8 (7-8) | Ótimo |
 
-Total de 2 teste(s) apresentaram perda de pacotes:
+**Gráfico de Latência:**
 
-| Horário | Latência Média (ms) | Perda (%) | Latência Min/Max (ms) |
-|---------|---------------------|-----------|----------------------|
-| 22:20:49 | 7 | 5 | 7/14 |
-| 22:35:49 | 7 | 5 | 7/8 |
+```
+21h │████████████████████████████████████████ 11.0ms
+22h │███████████████████████████ 7.4ms
+23h │████████████████████████████ 7.8ms
+```
 
-## Detalhamento por Horário
+## Análise Técnica
 
-| Horário | Latência (ms) | Min/Max (ms) | Perda (%) |
-|---------|---------------|--------------|----------|
-| 21:35:50 | 11 | 8/16 | 0 |
-| 22:15:49 | 7 | 7/14 | 0 |
-| 22:20:49 | 7 | 7/14 | 5 |
-| 22:25:50 | 7 | 7/14 | 0 |
-| 22:30:49 | 7 | 7/8 | 0 |
-| 22:35:49 | 7 | 7/8 | 5 |
-| 22:40:49 | 8 | 7/14 | 0 |
-| 22:45:49 | 9 | 7/24 | 0 |
-| 22:50:49 | 8 | 7/15 | 0 |
-| 22:55:49 | 7 | 7/14 | 0 |
-| 23:00:49 | 8 | 7/12 | 0 |
-| 23:05:49 | 8 | 7/16 | 0 |
-| 23:10:49 | 8 | 7/15 | 0 |
-| 23:15:49 | 8 | 7/15 | 0 |
-| 23:20:49 | 7 | 7/12 | 0 |
-| 23:25:49 | 8 | 7/20 | 0 |
-| 23:30:49 | 7 | 7/9 | 0 |
-| 23:35:49 | 8 | 7/22 | 0 |
-| 23:40:49 | 8 | 7/14 | 0 |
-| 23:45:49 | 8 | 7/21 | 0 |
-| 23:50:49 | 8 | 7/21 | 0 |
-| 23:55:49 | 7 | 7/8 | 0 |
+**Tempo de resposta:** Típico 8.0ms | 95% dos casos abaixo de 8.9ms
 
-## Análise e Conclusão
+**Estabilidade:** Excelente (variação 0.67ms)
 
-**Disponibilidade**: 99.55% - Boa. Sistema operacional com pequenos desvios.
+**Comparativo de destinos:**
+- AGHUSE: 7.8ms
+- Rede interna: 7.5ms
+- Internet: 45ms
 
-**Latência**: Média de 7.8ms - Excelente performance de rede.
+## Detalhes de Problemas
+
+**Perda de Pacotes:** 2 ocorrências
+- 22:20:49, 22:35:49
+
+## Resumo
+
+**Conexão**: 99.55% - Boa
+
+**Resumo por Horário**: 2/3 ótimo | 1/3 bom
 
