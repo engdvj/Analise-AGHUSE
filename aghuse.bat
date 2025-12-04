@@ -22,7 +22,13 @@ if "%HORA:~0,1%"==" " set "HORA=0%HORA:~1,1%"
 
 set "TIMESTAMP=%ANO%-%MES%-%DIA%_%HORA%-%MIN%-%SEG%"
 
-set "ARQ=%CD%\CONECTIVIDADE_AGHUSE_%TIMESTAMP%.txt"
+rem ============================================
+rem 0.1 - CRIA PASTA DO DIA
+rem ============================================
+set "PASTA_DIA=C:\Users\Administrador\Desktop\script\arquivos\%ANO%-%MES%-%DIA%"
+if not exist "%PASTA_DIA%" mkdir "%PASTA_DIA%"
+
+set "ARQ=%PASTA_DIA%\CONECTIVIDADE_AGHUSE_%TIMESTAMP%.txt"
 
 cls
 echo ===============================================

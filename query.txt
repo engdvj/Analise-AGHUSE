@@ -1,0 +1,3 @@
+schtasks /query /tn "AGHUSE_PING" - buscar
+schtasks /end /tn "AGHUSE_PING" - finalizar
+schtasks /query /tn "AGHUSE_PING" /v /fo list - detalhes

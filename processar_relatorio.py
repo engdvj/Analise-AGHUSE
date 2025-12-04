@@ -79,17 +79,37 @@ def extrair_dados_teste(conteudo):
     return dados
 
 def processar_todos_arquivos(pasta):
-    """Processa todos os arquivos de teste na pasta"""
-    arquivos = sorted([f for f in os.listdir(pasta) if f.endswith('.txt')])
+    """Processa todos os arquivos de teste na pasta e subpastas"""
     todos_dados = []
 
-    for arquivo in arquivos:
+    # Procurar arquivos .txt diretamente na pasta
+    for arquivo in os.listdir(pasta):
         caminho = os.path.join(pasta, arquivo)
-        with open(caminho, 'r', encoding='cp1252', errors='ignore') as f:
-            conteudo = f.read()
-            dados = extrair_dados_teste(conteudo)
-            if dados['timestamp'] and dados['datetime']:
-                todos_dados.append(dados)
+
+        # Se for um diretório, processar recursivamente
+        if os.path.isdir(caminho):
+            for sub_arquivo in os.listdir(caminho):
+                if sub_arquivo.endswith('.txt'):
+                    caminho_completo = os.path.join(caminho, sub_arquivo)
+                    try:
+                        with open(caminho_completo, 'r', encoding='cp1252', errors='ignore') as f:
+                            conteudo = f.read()
+                            dados = extrair_dados_teste(conteudo)
+                            if dados['timestamp'] and dados['datetime']:
+                                todos_dados.append(dados)
+                    except Exception as e:
+                        print(f"  [ERRO] Falha ao processar {sub_arquivo}: {e}")
+
+        # Se for arquivo .txt diretamente na pasta
+        elif arquivo.endswith('.txt'):
+            try:
+                with open(caminho, 'r', encoding='cp1252', errors='ignore') as f:
+                    conteudo = f.read()
+                    dados = extrair_dados_teste(conteudo)
+                    if dados['timestamp'] and dados['datetime']:
+                        todos_dados.append(dados)
+            except Exception as e:
+                print(f"  [ERRO] Falha ao processar {arquivo}: {e}")
 
     return sorted(todos_dados, key=lambda x: x['datetime'])
 
@@ -275,6 +295,12 @@ def gerar_relatorio_semanal(dados_por_dia):
     """Gera relatório semanal consolidado"""
     md = []
 
+    # Validar se há dados
+    if not dados_por_dia:
+        md.append("# Relatório Semanal - Monitoramento de Conectividade AGHUSE\n\n")
+        md.append("**Aviso**: Nenhum dado disponível para gerar o relatório.\n")
+        return ''.join(md)
+
     dias_ordenados = sorted(dados_por_dia.keys())
     primeira_data = dias_ordenados[0].strftime("%d/%m/%Y")
     ultima_data = dias_ordenados[-1].strftime("%d/%m/%Y")
@@ -376,6 +402,12 @@ def gerar_relatorio_semanal(dados_por_dia):
 def gerar_relatorio_geral(dados_por_dia):
     """Gera relatório geral de todo o período"""
     md = []
+
+    # Validar se há dados
+    if not dados_por_dia:
+        md.append("# Relatório Geral - Monitoramento AGHUSE\n\n")
+        md.append("**Aviso**: Nenhum dado disponível para gerar o relatório.\n")
+        return ''.join(md)
 
     dias_ordenados = sorted(dados_por_dia.keys())
     primeira_data = dias_ordenados[0].strftime("%d/%m/%Y")
