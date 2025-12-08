@@ -2,11 +2,11 @@
 
 ## Status do Dia
 
-**Conexão: 98.99%** - REGULAR
+**Conexão: 99.13%** - BOM
 
 **Problemas:**
-- 39 horários com perda de conexão
-- 88 horários com lentidão
+- 40 horários com perda de conexão
+- 131 horários com lentidão
 
 ## Desempenho por Horário
 
@@ -32,7 +32,10 @@
 | 17h | 60.7 (50-71) | Regular [2 perda(s)] |
 | 18h | 52.8 (46-58) | Ruim [3 perda(s)] |
 | 19h | 52.7 (51-56) | Regular |
-| 20h | 52.4 (52-54) | Regular |
+| 20h | 52.2 (51-54) | Regular |
+| 21h | 51.8 (51-55) | Regular |
+| 22h | 50.2 (48-52) | Regular [1 perda(s)] |
+| 23h | 48.7 (48-50) | Bom |
 
 **Gráfico de Latência:**
 
@@ -57,28 +60,31 @@
 17h │█████████████████████████████████████ 60.7ms
 18h │████████████████████████████████ 52.8ms
 19h │████████████████████████████████ 52.7ms
-20h │████████████████████████████████ 52.4ms
+20h │████████████████████████████████ 52.2ms
+21h │████████████████████████████████ 51.8ms
+22h │███████████████████████████████ 50.2ms
+23h │██████████████████████████████ 48.7ms
 ```
 
 ## Análise Técnica
 
-**Tempo de resposta:** Típico 9.0ms | 95% dos casos abaixo de 64.0ms
+**Tempo de resposta:** Típico 11.0ms | 95% dos casos abaixo de 64.0ms
 
-**Estabilidade:** Ruim (variação 2.25ms)
+**Estabilidade:** Ruim (variação 2.05ms)
 
 **Comparativo de destinos:**
-- AGHUSE: 26.1ms
-- Rede interna: 25.9ms
-- Internet: 45.4ms
+- AGHUSE: 29.8ms
+- Rede interna: 29.6ms
+- Internet: 45.3ms
 
 ## Detalhes de Problemas
 
-**Perda de Pacotes:** 39 ocorrências
-- 03:05:50, 05:45:49, 06:30:49, 07:05:49, 08:00:49, 08:10:49, 08:15:49, 08:35:49 e mais 31
+**Perda de Pacotes:** 40 ocorrências
+- 03:05:50, 05:45:49, 06:30:49, 07:05:49, 08:00:49, 08:10:49, 08:15:49, 08:35:49 e mais 32
 
 ## Resumo
 
-**Conexão**: 98.99% - Regular
+**Conexão**: 99.13% - Boa
 
-**Resumo por Horário**: 8/21 ótimo | 4/21 bom | 7/21 regular | 2/21 ruim
+**Resumo por Horário**: 8/24 ótimo | 5/24 bom | 9/24 regular | 2/24 ruim
 

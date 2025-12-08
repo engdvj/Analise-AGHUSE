@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório AGHUSE - 07/12/2025</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px 40px;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px 40px;
+        }
+
+        .metrics-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            border-left: 4px solid #dee2e6;
+        }
+
+        .metric-card.primary {
+            border-left-color: #3498db;
+        }
+
+        .metric-card.success {
+            border-left-color: #27ae60;
+        }
+
+        .metric-card.warning {
+            border-left-color: #f39c12;
+        }
+
+        .metric-card.danger {
+            border-left-color: #e74c3c;
+        }
+
+        .metric-label {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #7f8c8d;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: 600;
+            color: #2c3e50;
+            line-height: 1;
+        }
+
+        .metric-unit {
+            font-size: 16px;
+            color: #95a5a6;
+            margin-left: 4px;
+        }
+
+        .metric-status {
+            font-size: 14px;
+            margin-top: 6px;
+            color: #7f8c8d;
+            font-weight: 500;
+        }
+
+        .charts-section {
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+
+        .chart-wrapper.large {
+            height: 400px;
+        }
+
+        .table-section {
+            margin-top: 30px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #f8f9fa;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        th {
+            background: #ecf0f1;
+            padding: 12px 15px;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+            color: #2c3e50;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 14px;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background: #ffffff;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-otimo {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-bom {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .status-regular {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-ruim {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .perda-indicator {
+            color: #e74c3c;
+            font-weight: 500;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header, .content {
+                padding: 20px;
+            }
+            .metrics-row {
+                grid-template-columns: 1fr;
+            }
+            .chart-wrapper {
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Relatório de Conectividade AGHUSE</h1>
+            <div class="subtitle">Análise do dia 07/12/2025</div>
+        </div>
+
+        <div class="content">
+            <div class="metrics-row">
+                <div class="metric-card success">
+                    <div class="metric-label">Disponibilidade</div>
+                    <div class="metric-value">99.76<span class="metric-unit">%</span></div>
+                    <div class="metric-status">BOM</div>
+                </div>
+
+                <div class="metric-card primary">
+                    <div class="metric-label">Latência Média</div>
+                    <div class="metric-value">53.9<span class="metric-unit">ms</span></div>
+                    <div class="metric-status">Máxima: 58.2ms</div>
+                </div>
+
+                <div class="metric-card warning">
+                    <div class="metric-label">Horários com Perda</div>
+                    <div class="metric-value">11</div>
+                    <div class="metric-status">Total de 11 perda(s)</div>
+                </div>
+
+                <div class="metric-card danger">
+                    <div class="metric-label">Horários com Lentidão</div>
+                    <div class="metric-value">286</div>
+                    <div class="metric-status">Latência > 20ms</div>
+                </div>
+            </div>
+
+            <div class="charts-section">
+                <div class="chart-container">
+                    <div class="chart-title">Latência por Horário</div>
+                    <div class="chart-wrapper large">
+                        <canvas id="latencyChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Perdas de Conexão por Horário</div>
+                    <div class="chart-wrapper">
+                        <canvas id="lossChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-section">
+                <div class="section-title">Desempenho Detalhado por Horário</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Horário</th>
+                            <th>Latência Média</th>
+                            <th>Mín - Máx</th>
+                            <th>Status</th>
+                            <th>Perdas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        <tr>
+                            <td>00h</td>
+                            <td>54.5 ms</td>
+                            <td>54 - 55 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td>0</td>
+                        </tr>
+
+                        <tr>
+                            <td>01h</td>
+                            <td>54.5 ms</td>
+                            <td>54 - 56 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td>0</td>
+                        </tr>
+
+                        <tr>
+                            <td>02h</td>
+                            <td>54.7 ms</td>
+                            <td>54 - 55 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td>0</td>
+                        </tr>
+
+                        <tr>
+                            <td>03h</td>
+                            <td>54.2 ms</td>
+                            <td>54 - 56 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td>0</td>
+                        </tr>
+
+                        <tr>
+                            <td>04h</td>
+                            <td>54.2 ms</td>
+                            <td>54 - 55 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td>0</td>
+                        </tr>
+
+                        <tr>
+                            <td>05h</td>
+                            <td>54.4 ms</td>
+                            <td>54 - 56 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td>0</td>
+                        </tr>
+
+                        <tr>
+                            <td>06h</td>
+                            <td>54.2 ms</td>
+                            <td>54 - 55 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td><span class="perda-indicator">1</span></td>
+                        </tr>
+
+                        <tr>
+                            <td>07h</td>
+                            <td>54.1 ms</td>
+                            <td>54 - 55 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td>0</td>
+                        </tr>
+
+                        <tr>
+                            <td>08h</td>
+                            <td>54.3 ms</td>
+                            <td>54 - 56 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td>0</td>
+                        </tr>
+
+                        <tr>
+                            <td>09h</td>
+                            <td>54.3 ms</td>
+                            <td>54 - 56 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td><span class="perda-indicator">1</span></td>
+                        </tr>
+
+                        <tr>
+                            <td>10h</td>
+                            <td>54.8 ms</td>
+                            <td>54 - 56 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td><span class="perda-indicator">2</span></td>
+                        </tr>
+
+                        <tr>
+                            <td>11h</td>
+                            <td>54.6 ms</td>
+                            <td>54 - 56 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td><span class="perda-indicator">1</span></td>
+                        </tr>
+
+                        <tr>
+                            <td>12h</td>
+                            <td>55.2 ms</td>
+                            <td>54 - 60 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td><span class="perda-indicator">1</span></td>
+                        </tr>
+
+                        <tr>
+                            <td>13h</td>
+                            <td>54.5 ms</td>
+                            <td>54 - 55 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td><span class="perda-indicator">1</span></td>
+                        </tr>
+
+                        <tr>
+                            <td>14h</td>
+                            <td>52.8 ms</td>
+                            <td>48 - 55 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td>0</td>
+                        </tr>
+
+                        <tr>
+                            <td>15h</td>
+                            <td>48.4 ms</td>
+                            <td>48 - 49 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td><span class="perda-indicator">1</span></td>
+                        </tr>
+
+                        <tr>
+                            <td>16h</td>
+                            <td>48.4 ms</td>
+                            <td>48 - 50 ms</td>
+                            <td><span class="status-badge status-bom">Bom</span></td>
+                            <td>0</td>
+                        </tr>
+
+                        <tr>
+                            <td>17h</td>
+                            <td>48.6 ms</td>
+                            <td>48 - 50 ms</td>
+                            <td><span class="status-badge status-bom">Bom</span></td>
+                            <td>0</td>
+                        </tr>
+
+                        <tr>
+                            <td>18h</td>
+                            <td>54.5 ms</td>
+                            <td>48 - 58 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td><span class="perda-indicator">1</span></td>
+                        </tr>
+
+                        <tr>
+                            <td>19h</td>
+                            <td>58.0 ms</td>
+                            <td>57 - 59 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td><span class="perda-indicator">1</span></td>
+                        </tr>
+
+                        <tr>
+                            <td>20h</td>
+                            <td>58.1 ms</td>
+                            <td>58 - 59 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td><span class="perda-indicator">1</span></td>
+                        </tr>
+
+                        <tr>
+                            <td>21h</td>
+                            <td>58.2 ms</td>
+                            <td>57 - 62 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td>0</td>
+                        </tr>
+
+                        <tr>
+                            <td>22h</td>
+                            <td>55.6 ms</td>
+                            <td>49 - 58 ms</td>
+                            <td><span class="status-badge status-regular">Regular</span></td>
+                            <td>0</td>
+                        </tr>
+
+                        <tr>
+                            <td>23h</td>
+                            <td>49.2 ms</td>
+                            <td>49 - 50 ms</td>
+                            <td><span class="status-badge status-bom">Bom</span></td>
+                            <td>0</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+        Chart.defaults.color = '#7f8c8d';
+
+        // Gráfico de Latência
+        const latencyCtx = document.getElementById('latencyChart').getContext('2d');
+        new Chart(latencyCtx, {
+            type: 'line',
+            data: {
+                labels: ["0h", "1h", "2h", "3h", "4h", "5h", "6h", "7h", "8h", "9h", "10h", "11h", "12h", "13h", "14h", "15h", "16h", "17h", "18h", "19h", "20h", "21h", "22h", "23h"],
+                datasets: [{
+                    label: 'Latência (ms)',
+                    data: [54.5, 54.5, 54.7, 54.2, 54.2, 54.4, 54.2, 54.1, 54.3, 54.3, 54.8, 54.6, 55.2, 54.5, 52.8, 48.4, 48.4, 48.6, 54.5, 58.0, 58.1, 58.2, 55.6, 49.2],
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 3,
+                    pointHoverRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(44, 62, 80, 0.9)',
+                        padding: 12,
+                        titleFont: {
+                            size: 14
+                        },
+                        bodyFont: {
+                            size: 13
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: '#ecf0f1'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value + ' ms';
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+
+        // Gráfico de Perdas
+        const lossCtx = document.getElementById('lossChart').getContext('2d');
+        new Chart(lossCtx, {
+            type: 'bar',
+            data: {
+                labels: ["0h", "1h", "2h", "3h", "4h", "5h", "6h", "7h", "8h", "9h", "10h", "11h", "12h", "13h", "14h", "15h", "16h", "17h", "18h", "19h", "20h", "21h", "22h", "23h"],
+                datasets: [{
+                    label: 'Perdas',
+                    data: [0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 2, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0],
+                    backgroundColor: function(context) {
+                        const value = context.parsed.y;
+                        if (value === 0) return '#95a5a6';
+                        if (value <= 2) return '#f39c12';
+                        return '#e74c3c';
+                    },
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(44, 62, 80, 0.9)',
+                        padding: 12,
+                        titleFont: {
+                            size: 14
+                        },
+                        bodyFont: {
+                            size: 13
+                        },
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.y + ' perda(s)';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        },
+                        grid: {
+                            color: '#ecf0f1'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

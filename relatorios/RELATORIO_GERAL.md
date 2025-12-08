@@ -1,78 +1,78 @@
 # Relatório Geral - Monitoramento AGHUSE
-**Período**: 03/12/2025 a 04/12/2025 (2 dias)
+**Período**: 03/12/2025 a 08/12/2025 (6 dias)
 
 ## Sumário Executivo
 
 | Métrica | Valor |
 |---------|-------|
-| Total de Testes Executados | 265 |
-| Média de Testes por Dia | 132 |
-| Testes sem Perda | 224 |
-| Testes com Perda | 41 |
-| Total de Pacotes Enviados | 5300 |
-| Total de Pacotes Perdidos | 51 |
-| **Disponibilidade** | **99.04%** |
+| Total de Testes Executados | 1297 |
+| Média de Testes por Dia | 216 |
+| Testes sem Perda | 1185 |
+| Testes com Perda | 112 |
+| Total de Pacotes Enviados | 25940 |
+| Total de Pacotes Perdidos | 136 |
+| **Disponibilidade** | **99.48%** |
 
 ## Análise de Latência por Faixa Horária
 
 > **Nota**: Esta análise consolida todos os testes realizados em cada faixa horária
-> ao longo do período completo (03/12/2025 a 04/12/2025, 2 dias).
+> ao longo do período completo (03/12/2025 a 08/12/2025, 6 dias).
 > Cada linha representa a média de todos os testes naquela hora em todos os dias.
 
 | Horário | Latência (ms) | Status |
 |---------|---------------|--------|
-| 00h | 7.4 (7-9) | Ótimo |
-| 01h | 7.2 (7-8) | Ótimo |
-| 02h | 7.4 (7-9) | Ótimo |
-| 03h | 7.2 (7-8) | Ótimo [1 perda(s)] |
-| 04h | 7.1 (7-8) | Ótimo |
-| 05h | 7.3 (7-8) | Ótimo [1 perda(s)] |
-| 06h | 8.1 (7-11) | Ótimo [1 perda(s)] |
-| 07h | 8.1 (7-9) | Ótimo [1 perda(s)] |
-| 08h | 8.8 (8-11) | Bom [4 perda(s)] |
-| 09h | 10.5 (8-14) | Bom [5 perda(s)] |
-| 10h | 31.4 (8-59) | Regular [4 perda(s)] |
-| 11h | 41.7 (8-62) | Regular [3 perda(s)] |
-| 12h | 9.5 (8-11) | Bom [4 perda(s)] |
-| 13h | 11.8 (8-29) | Bom [4 perda(s)] |
-| 14h | 42.9 (8-65) | Regular [2 perda(s)] |
-| 15h | 62.5 (56-73) | Ruim [3 perda(s)] |
-| 16h | 64.2 (61-68) | Regular [1 perda(s)] |
-| 17h | 60.7 (50-71) | Regular [2 perda(s)] |
-| 18h | 52.8 (46-58) | Ruim [3 perda(s)] |
-| 19h | 52.7 (51-56) | Regular |
-| 20h | 52.4 (52-54) | Regular |
-| 21h | 11.0 (11-11) | Bom |
-| 22h | 7.4 (7-9) | Ótimo [2 perda(s)] |
-| 23h | 7.8 (7-8) | Ótimo |
+| 00h | 41.7 (7-64) | Regular [1 perda(s)] |
+| 01h | 42.4 (7-56) | Regular [2 perda(s)] |
+| 02h | 42.9 (7-57) | Regular [3 perda(s)] |
+| 03h | 42.5 (7-56) | Regular [1 perda(s)] |
+| 04h | 41.9 (7-55) | Regular [1 perda(s)] |
+| 05h | 42.4 (7-56) | Regular [1 perda(s)] |
+| 06h | 43.8 (7-70) | Regular [4 perda(s)] |
+| 07h | 42.6 (7-55) | Regular [7 perda(s)] |
+| 08h | 43.2 (8-58) | Regular [10 perda(s)] |
+| 09h | 44.0 (8-68) | Regular [16 perda(s)] |
+| 10h | 48.6 (8-60) | Regular [13 perda(s)] |
+| 11h | 49.4 (8-62) | Regular [8 perda(s)] |
+| 12h | 41.1 (8-60) | Regular [12 perda(s)] |
+| 13h | 42.7 (8-55) | Regular [7 perda(s)] |
+| 14h | 49.8 (8-65) | Regular [2 perda(s)] |
+| 15h | 53.5 (48-73) | Ruim [6 perda(s)] |
+| 16h | 54.1 (48-68) | Regular [2 perda(s)] |
+| 17h | 53.1 (48-71) | Ruim [3 perda(s)] |
+| 18h | 52.8 (46-58) | Ruim [5 perda(s)] |
+| 19h | 53.7 (48-59) | Ruim [3 perda(s)] |
+| 20h | 53.4 (49-59) | Regular [2 perda(s)] |
+| 21h | 52.7 (11-62) | Regular |
+| 22h | 44.8 (7-58) | Regular [3 perda(s)] |
+| 23h | 41.2 (7-55) | Bom |
 
 **Gráfico de Latência:**
 
 ```
-00h │████ 7.4ms
-01h │████ 7.2ms
-02h │████ 7.4ms
-03h │████ 7.2ms
-04h │████ 7.1ms
-05h │████ 7.3ms
-06h │█████ 8.1ms
-07h │█████ 8.1ms
-08h │█████ 8.8ms
-09h │██████ 10.5ms
-10h │███████████████████ 31.4ms
-11h │█████████████████████████ 41.7ms
-12h │█████ 9.5ms
-13h │███████ 11.8ms
-14h │██████████████████████████ 42.9ms
-15h │██████████████████████████████████████ 62.5ms
-16h │████████████████████████████████████████ 64.2ms
-17h │█████████████████████████████████████ 60.7ms
-18h │████████████████████████████████ 52.8ms
-19h │████████████████████████████████ 52.7ms
-20h │████████████████████████████████ 52.4ms
-21h │██████ 11.0ms
-22h │████ 7.4ms
-23h │████ 7.8ms
+00h │██████████████████████████████ 41.7ms
+01h │███████████████████████████████ 42.4ms
+02h │███████████████████████████████ 42.9ms
+03h │███████████████████████████████ 42.5ms
+04h │███████████████████████████████ 41.9ms
+05h │███████████████████████████████ 42.4ms
+06h │████████████████████████████████ 43.8ms
+07h │███████████████████████████████ 42.6ms
+08h │███████████████████████████████ 43.2ms
+09h │████████████████████████████████ 44.0ms
+10h │███████████████████████████████████ 48.6ms
+11h │████████████████████████████████████ 49.4ms
+12h │██████████████████████████████ 41.1ms
+13h │███████████████████████████████ 42.7ms
+14h │████████████████████████████████████ 49.8ms
+15h │███████████████████████████████████████ 53.5ms
+16h │████████████████████████████████████████ 54.1ms
+17h │███████████████████████████████████████ 53.1ms
+18h │███████████████████████████████████████ 52.8ms
+19h │███████████████████████████████████████ 53.7ms
+20h │███████████████████████████████████████ 53.4ms
+21h │██████████████████████████████████████ 52.7ms
+22h │█████████████████████████████████ 44.8ms
+23h │██████████████████████████████ 41.2ms
 ```
 
 ## Análise por Dia
@@ -80,7 +80,11 @@
 | Data | Testes | Sem Perda / Com Perda | Pacotes Perdidos | Disponibilidade | Latência Média |
 |------|--------|-----------------------|------------------|-----------------|----------------|
 | 03/12/2025 | 22 | 20 / 2 | 2 | 99.55% | 7.8ms |
-| 04/12/2025 | 243 | 204 / 39 | 49 | 98.99% | 26.1ms |
+| 04/12/2025 | 286 | 246 / 40 | 50 | 99.13% | 29.8ms |
+| 05/12/2025 | 288 | 256 / 32 | 39 | 99.32% | 50.7ms |
+| 06/12/2025 | 288 | 276 / 12 | 13 | 99.77% | 51.7ms |
+| 07/12/2025 | 286 | 275 / 11 | 14 | 99.76% | 53.9ms |
+| 08/12/2025 | 127 | 112 / 15 | 18 | 99.29% | 49.9ms |
 
 ## Análise de Horários Críticos
 
@@ -88,43 +92,49 @@
 
 | Faixa Horária | Ocorrências | Porcentagem do Total |
 |---------------|-------------|---------------------|
-| 09:00 - 09:59 | 5 | 12.2% |
-| 08:00 - 08:59 | 4 | 9.8% |
-| 10:00 - 10:59 | 4 | 9.8% |
-| 12:00 - 12:59 | 4 | 9.8% |
-| 13:00 - 13:59 | 4 | 9.8% |
-| 11:00 - 11:59 | 3 | 7.3% |
-| 15:00 - 15:59 | 3 | 7.3% |
-| 18:00 - 18:59 | 3 | 7.3% |
-| 22:00 - 22:59 | 2 | 4.9% |
-| 14:00 - 14:59 | 2 | 4.9% |
-| 17:00 - 17:59 | 2 | 4.9% |
-| 03:00 - 03:59 | 1 | 2.4% |
-| 05:00 - 05:59 | 1 | 2.4% |
-| 06:00 - 06:59 | 1 | 2.4% |
-| 07:00 - 07:59 | 1 | 2.4% |
-| 16:00 - 16:59 | 1 | 2.4% |
+| 09:00 - 09:59 | 16 | 14.3% |
+| 10:00 - 10:59 | 13 | 11.6% |
+| 12:00 - 12:59 | 12 | 10.7% |
+| 08:00 - 08:59 | 10 | 8.9% |
+| 11:00 - 11:59 | 8 | 7.1% |
+| 07:00 - 07:59 | 7 | 6.2% |
+| 13:00 - 13:59 | 7 | 6.2% |
+| 15:00 - 15:59 | 6 | 5.4% |
+| 18:00 - 18:59 | 5 | 4.5% |
+| 06:00 - 06:59 | 4 | 3.6% |
+| 22:00 - 22:59 | 3 | 2.7% |
+| 17:00 - 17:59 | 3 | 2.7% |
+| 02:00 - 02:59 | 3 | 2.7% |
+| 19:00 - 19:59 | 3 | 2.7% |
+| 14:00 - 14:59 | 2 | 1.8% |
+| 16:00 - 16:59 | 2 | 1.8% |
+| 01:00 - 01:59 | 2 | 1.8% |
+| 20:00 - 20:59 | 2 | 1.8% |
+| 03:00 - 03:59 | 1 | 0.9% |
+| 05:00 - 05:59 | 1 | 0.9% |
+| 00:00 - 00:59 | 1 | 0.9% |
+| 04:00 - 04:59 | 1 | 0.9% |
 
-**Padrão Identificado**: Concentração de problemas entre 08:00 e 18:59
+**Padrão Identificado**: Concentração de problemas entre 08:00 e 12:59
 
 ### Distribuição de Latência Elevada por Horário
 
 | Faixa Horária | Ocorrências |
 |---------------|-------------|
-| 15:00 - 15:59 | 12 |
-| 16:00 - 16:59 | 12 |
-| 17:00 - 17:59 | 12 |
-| 18:00 - 18:59 | 12 |
-| 19:00 - 19:59 | 12 |
-| 11:00 - 11:59 | 8 |
-| 14:00 - 14:59 | 8 |
-| 10:00 - 10:59 | 6 |
-| 20:00 - 20:59 | 5 |
-| 13:00 - 13:59 | 1 |
+| 10:00 - 10:59 | 49 |
+| 15:00 - 15:59 | 48 |
+| 16:00 - 16:59 | 48 |
+| 17:00 - 17:59 | 48 |
+| 18:00 - 18:59 | 48 |
+| 19:00 - 19:59 | 48 |
+| 20:00 - 20:59 | 48 |
+| 21:00 - 21:59 | 48 |
+| 22:00 - 22:59 | 48 |
+| 23:00 - 23:59 | 48 |
 
 ## Registro de Incidentes
 
-Total de 41 teste(s) com perda de pacotes:
+Total de 112 teste(s) com perda de pacotes:
 
 | Data | Horário | Latência (ms) | Perda (%) | Min/Max (ms) |
 |------|---------|---------------|-----------|-------------|
@@ -159,13 +169,13 @@ Total de 41 teste(s) com perda de pacotes:
 | 04/12 | 13:54:00 | 8 | 5 | 7/16 |
 | 04/12 | 13:59:00 | 10 | 5 | 7/33 |
 
-*Exibindo 30 de 41 incidentes. Consulte relatórios diários para informações completas.*
+*Exibindo 30 de 112 incidentes. Consulte relatórios diários para informações completas.*
 
 ## Análise e Conclusão
 
-**Conexão**: 99.04% - Boa- Acompanhar tendências
+**Conexão**: 99.48% - Boa- Acompanhar tendências
 
-**Qualidade por Faixa Horária no Período Completo**: 10/24 ótimo | 5/24 bom | 7/24 regular | 2/24 ruim
+**Qualidade por Faixa Horária no Período Completo**: 1/24 bom | 19/24 regular | 4/24 ruim
 
 ---
-*Relatório gerado automaticamente a partir de 265 testes realizados em 2 dias*
+*Relatório gerado automaticamente a partir de 1297 testes realizados em 6 dias*

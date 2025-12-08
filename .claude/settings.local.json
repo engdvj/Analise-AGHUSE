@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python processar_relatorio.py:*)",
+      "Bash(python:*)",
+      "Bash(gerar_relatorios.bat)",
+      "Bash(ls:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
