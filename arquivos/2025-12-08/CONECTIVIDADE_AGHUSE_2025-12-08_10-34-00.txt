@@ -109,3 +109,81 @@ com no m ximo 30 saltos:
 
   1    <1 ms    <1 ms    <1 ms  10.17.201.254 
   2     7 ms    <1 ms    <1 ms  10.17.250.114 
+  3    49 ms    49 ms    49 ms  10.164.255.40 
+  4    63 ms    92 ms    50 ms  10.2.255.41 
+  5    49 ms    49 ms    49 ms  10.2.222.220 
+  6    49 ms    54 ms    57 ms  10.252.17.132 
+
+Rastreamento conclu¡do.
+
+---------------------------------------------------------
+
+[5/7] PING 10.252.17.132 -n 20
+---------------------------------------------------------
+
+Disparando 10.252.17.132 com 32 bytes de dados:
+Resposta de 10.252.17.132: bytes=32 tempo=49ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=49ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=49ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=49ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=49ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=49ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=49ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=49ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=49ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=57ms TTL=59
+Esgotado o tempo limite do pedido.
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=51ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=49ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=56ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=49ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=55ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=49ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=49ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=49ms TTL=59
+
+Estat¡sticas do Ping para 10.252.17.132:
+    Pacotes: Enviados = 20, Recebidos = 19, Perdidos = 1 (5% de
+             perda),
+Aproximar um n£mero redondo de vezes em milissegundos:
+    M¡nimo = 49ms, M ximo = 57ms, M‚dia = 50ms
+
+---------------------------------------------------------
+
+[6/7] PING 8.8.8.8 -n 20
+---------------------------------------------------------
+
+Disparando 8.8.8.8 com 32 bytes de dados:
+Resposta de 8.8.8.8: bytes=32 tempo=37ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=36ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=36ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=44ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=40ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=37ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=40ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=37ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=37ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=63ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=36ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=36ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=44ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=36ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=36ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=41ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=36ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=40ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=36ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=36ms TTL=114
+
+Estat¡sticas do Ping para 8.8.8.8:
+    Pacotes: Enviados = 20, Recebidos = 20, Perdidos = 0 (0% de
+             perda),
+Aproximar um n£mero redondo de vezes em milissegundos:
+    M¡nimo = 36ms, M ximo = 63ms, M‚dia = 39ms
+
+---------------------------------------------------------
+
+[7/7] FIM DO TESTE DE CONECTIVIDADE
+=========================================================
+

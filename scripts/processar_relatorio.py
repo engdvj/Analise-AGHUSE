@@ -3,6 +3,26 @@ import re
 from datetime import datetime, timedelta
 from collections import defaultdict
 
+# ============================================================================
+# CONFIGURAÇÕES DE ANÁLISE AVANÇADA
+# ============================================================================
+
+# Baseline Ideal de Latência
+LATENCIA_IDEAL = 15      # ms - valor de referência ideal
+LATENCIA_BOA = 30        # ms - aceitável
+LATENCIA_REGULAR = 50    # ms - atenção
+# > 50ms = Ruim
+
+# Detecção de Horários de Pico
+THRESHOLD_PICO = 1.10    # 10% acima da média geral = pico
+MIN_DURACAO_PICO = 3     # Mínimo 3 horas consecutivas para ser considerado pico
+
+# Detecção de Anomalias
+DESVIO_ANOMALIA = 2.5    # 2.5 desvios padrão = anomalia
+PERCENTUAL_ANOMALIA = 200  # 200% acima do horário = anomalia
+
+# ============================================================================
+
 def extrair_dados_teste(conteudo):
     """Extrai os dados principais de um arquivo de teste"""
     dados = {
@@ -238,6 +258,7 @@ def analisar_latencia_por_horario(dados_lista):
             'min': min(latencias),
             'max': max(latencias),
             'testes': len(latencias),
+            'total_testes': len(latencias),  # Adicionar para compatibilidade
             'testes_com_perda': testes_com_perda,
             'perda_total': sum(perdas)
         }
@@ -611,6 +632,456 @@ def gerar_comparacao_3_endpoints(comparacao):
     md.append("```\n\n")
     return ''.join(md)
 
+
+# ============================================================================
+# FUNÇÕES DE ANÁLISE AVANÇADA
+# ============================================================================
+
+def calcular_regressao_linear(dados_lista):
+    """
+    Calcula regressão linear y = ax + b para tendências de latência
+
+    Args:
+        dados_lista: Lista de dicionários com dados de testes contendo 'datetime' e 'ping_aghuse'
+
+    Returns:
+        dict: {'slope', 'intercept', 'r_squared', 'previsao_7d', 'tendencia'}
+    """
+    if not dados_lista or len(dados_lista) < 2:
+        return {
+            'slope': 0,
+            'intercept': 0,
+            'r_squared': 0,
+            'previsao_7d': 0,
+            'tendencia': 'indisponível'
+        }
+
+    # Filtrar dados válidos
+    dados_validos = [(d['datetime'], d['ping_aghuse']['media'])
+                     for d in dados_lista
+                     if d.get('datetime') and d.get('ping_aghuse', {}).get('media') is not None]
+
+    if len(dados_validos) < 2:
+        return {
+            'slope': 0,
+            'intercept': 0,
+            'r_squared': 0,
+            'previsao_7d': 0,
+            'tendencia': 'dados insuficientes'
+        }
+
+    # Converter timestamps para dias numéricos (desde o primeiro dado)
+    tempo_inicial = dados_validos[0][0]
+    x = []
+    y = []
+
+    for timestamp, latencia in dados_validos:
+        dias = (timestamp - tempo_inicial).days + (timestamp - tempo_inicial).seconds / 86400.0
+        x.append(dias)
+        y.append(latencia)
+
+    # Calcular regressão linear: y = slope * x + intercept
+    n = len(x)
+    sum_x = sum(x)
+    sum_y = sum(y)
+    sum_xy = sum(xi * yi for xi, yi in zip(x, y))
+    sum_x2 = sum(xi ** 2 for xi in x)
+
+    # Evitar divisão por zero
+    denominador = (n * sum_x2 - sum_x ** 2)
+    if denominador == 0:
+        return {
+            'slope': 0,
+            'intercept': sum_y / n if n > 0 else 0,
+            'r_squared': 0,
+            'previsao_7d': sum_y / n if n > 0 else 0,
+            'tendencia': 'estável'
+        }
+
+    slope = (n * sum_xy - sum_x * sum_y) / denominador
+    intercept = (sum_y - slope * sum_x) / n
+
+    # Calcular R² (coeficiente de determinação)
+    y_mean = sum_y / n
+    ss_tot = sum((yi - y_mean) ** 2 for yi in y)
+    ss_res = sum((yi - (slope * xi + intercept)) ** 2 for xi, yi in zip(x, y))
+    r_squared = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
+
+    # Previsão para próximos 7 dias
+    ultimo_x = x[-1]
+    previsao_7d = slope * (ultimo_x + 7) + intercept
+
+    # Classificar tendência
+    if slope > 0.5:
+        tendencia = 'alta'
+    elif slope < -0.5:
+        tendencia = 'queda'
+    else:
+        tendencia = 'estável'
+
+    return {
+        'slope': slope,
+        'intercept': intercept,
+        'r_squared': r_squared,
+        'previsao_7d': max(0, previsao_7d),  # Latência não pode ser negativa
+        'tendencia': tendencia
+    }
+
+
+def detectar_horarios_pico(latencia_por_hora, threshold=None, min_duracao=None):
+    """
+    Identifica períodos de pico baseado em threshold
+
+    Args:
+        latencia_por_hora: dict {hora: {'media': float, ...}}
+        threshold: float, percentual acima da média para ser considerado pico (ex: 1.15 = 15%)
+        min_duracao: int, mínimo de horas consecutivas
+
+    Returns:
+        list: [{'nome', 'inicio', 'fim', 'latencia_media', 'diferenca_media'}]
+    """
+    if threshold is None:
+        threshold = THRESHOLD_PICO
+    if min_duracao is None:
+        min_duracao = MIN_DURACAO_PICO
+
+    if not latencia_por_hora:
+        return []
+
+    # Calcular média geral
+    latencias = [h['media'] for h in latencia_por_hora.values() if h.get('media') is not None]
+    if not latencias:
+        return []
+
+    media_geral = sum(latencias) / len(latencias)
+
+    picos = []
+    periodo_atual = None
+
+    for hora in sorted(latencia_por_hora.keys()):
+        lat = latencia_por_hora[hora].get('media')
+        if lat is None:
+            continue
+
+        is_pico = lat >= media_geral * threshold
+
+        if is_pico:
+            if periodo_atual is None:
+                # Inicia novo período de pico
+                periodo_atual = {
+                    'inicio': hora,
+                    'fim': hora,
+                    'latencia_soma': lat,
+                    'count': 1
+                }
+            else:
+                # Estende período atual
+                periodo_atual['fim'] = hora
+                periodo_atual['latencia_soma'] += lat
+                periodo_atual['count'] += 1
+        else:
+            # Finaliza período se existir e atende mínimo
+            if periodo_atual and periodo_atual['count'] >= min_duracao:
+                periodo_atual['latencia_media'] = periodo_atual['latencia_soma'] / periodo_atual['count']
+                periodo_atual['diferenca_media'] = periodo_atual['latencia_media'] - media_geral
+                del periodo_atual['latencia_soma']  # Remove dados temporários
+                picos.append(periodo_atual)
+            periodo_atual = None
+
+    # Finalizar último período se existir
+    if periodo_atual and periodo_atual['count'] >= min_duracao:
+        periodo_atual['latencia_media'] = periodo_atual['latencia_soma'] / periodo_atual['count']
+        periodo_atual['diferenca_media'] = periodo_atual['latencia_media'] - media_geral
+        del periodo_atual['latencia_soma']
+        picos.append(periodo_atual)
+
+    # Classificar e nomear picos
+    for pico in picos:
+        if 8 <= pico['inicio'] <= 12:
+            pico['nome'] = 'Pico Matinal'
+        elif 14 <= pico['inicio'] <= 18:
+            pico['nome'] = 'Pico Vespertino'
+        elif 20 <= pico['inicio'] or pico['fim'] <= 6:
+            pico['nome'] = 'Pico Noturno'
+        else:
+            pico['nome'] = f"Pico {pico['inicio']:02d}h-{pico['fim']:02d}h"
+
+    return picos
+
+
+def calcular_score_qualidade_horario(latencia, perda_percentual, baseline=None):
+    """
+    Calcula score 0-10 baseado em latência e perda de pacotes
+
+    Args:
+        latencia: float, latência média em ms
+        perda_percentual: float, percentual de perda (0-100)
+        baseline: float, latência ideal de referência
+
+    Returns:
+        dict: {'score', 'classificacao', 'componente_latencia', 'componente_perda'}
+    """
+    if baseline is None:
+        baseline = LATENCIA_IDEAL
+
+    # Score de latência (0-6 pontos, 60% do total)
+    if latencia <= baseline:
+        score_lat = 6.0
+    elif latencia <= baseline * 2:
+        # Linear de 6.0 a 3.0
+        score_lat = 6.0 - ((latencia - baseline) / baseline) * 3.0
+    elif latencia <= baseline * 3:
+        # Linear de 3.0 a 1.0
+        score_lat = 3.0 - ((latencia - baseline * 2) / baseline) * 2.0
+    else:
+        # Decai rapidamente após 3x baseline
+        score_lat = max(0, 1.0 - ((latencia - baseline * 3) / baseline) * 0.5)
+
+    # Score de perda (0-4 pontos, 40% do total)
+    if perda_percentual == 0:
+        score_perda = 4.0
+    elif perda_percentual <= 2:
+        # Linear de 4.0 a 3.0
+        score_perda = 4.0 - (perda_percentual / 2.0) * 1.0
+    elif perda_percentual <= 5:
+        # Linear de 3.0 a 1.0
+        score_perda = 3.0 - ((perda_percentual - 2.0) / 3.0) * 2.0
+    else:
+        # Decai rapidamente após 5%
+        score_perda = max(0, 1.0 - ((perda_percentual - 5.0) / 5.0) * 0.5)
+
+    score_final = score_lat + score_perda
+
+    # Classificação
+    if score_final >= 8.5:
+        classificacao = 'Excelente'
+    elif score_final >= 7.0:
+        classificacao = 'Muito Bom'
+    elif score_final >= 5.5:
+        classificacao = 'Bom'
+    elif score_final >= 4.0:
+        classificacao = 'Regular'
+    else:
+        classificacao = 'Ruim'
+
+    return {
+        'score': round(score_final, 1),
+        'classificacao': classificacao,
+        'componente_latencia': round(score_lat, 1),
+        'componente_perda': round(score_perda, 1)
+    }
+
+
+def detectar_anomalias(dados_lista, latencia_por_hora, desvio_threshold=None, percentual_threshold=None):
+    """
+    Detecta anomalias baseado em desvio padrão e percentual acima do normal
+
+    Args:
+        dados_lista: Lista de dados de testes
+        latencia_por_hora: dict com estatísticas por hora
+        desvio_threshold: float, número de desvios padrão para anomalia
+        percentual_threshold: float, percentual acima da média para anomalia
+
+    Returns:
+        list: [{'timestamp', 'tipo', 'latencia', 'esperado', 'z_score'/'percentual', 'severidade'}]
+    """
+    if desvio_threshold is None:
+        desvio_threshold = DESVIO_ANOMALIA
+    if percentual_threshold is None:
+        percentual_threshold = PERCENTUAL_ANOMALIA
+
+    anomalias = []
+
+    # Calcular média e desvio padrão por hora
+    estatisticas_hora = {}
+    for hora in range(24):
+        if hora in latencia_por_hora:
+            h_data = latencia_por_hora[hora]
+            # Coletar todas as latências válidas daquela hora
+            lats = []
+            for dado in dados_lista:
+                if (dado.get('datetime') and dado['datetime'].hour == hora and
+                    dado.get('ping_aghuse', {}).get('media') is not None):
+                    lats.append(dado['ping_aghuse']['media'])
+
+            if lats:
+                media = sum(lats) / len(lats)
+                # Desvio padrão
+                if len(lats) > 1:
+                    variancia = sum((x - media) ** 2 for x in lats) / len(lats)
+                    desvio = variancia ** 0.5
+                else:
+                    desvio = 0
+
+                estatisticas_hora[hora] = {
+                    'media': media,
+                    'desvio': desvio
+                }
+
+    # Verificar cada teste
+    for dado in dados_lista:
+        if not dado.get('datetime') or dado.get('ping_aghuse', {}).get('media') is None:
+            continue
+
+        hora = dado['datetime'].hour
+        lat = dado['ping_aghuse']['media']
+
+        if hora in estatisticas_hora:
+            stats = estatisticas_hora[hora]
+
+            # Anomalia por desvio padrão (apenas latências ALTAS são anomalias ruins)
+            if stats['desvio'] > 0:
+                z_score = (lat - stats['media']) / stats['desvio']
+
+                # Detectar apenas z_score POSITIVO (latência acima da média)
+                if z_score > desvio_threshold:
+                    anomalias.append({
+                        'timestamp': dado['datetime'],
+                        'tipo': 'desvio_padrao',
+                        'latencia': lat,
+                        'esperado': stats['media'],
+                        'z_score': z_score,
+                        'severidade': 'alta' if z_score > 3 else 'media'
+                    })
+                    continue  # Não duplicar anomalia
+
+            # Anomalia por percentual
+            if stats['media'] > 0:
+                percentual = (lat / stats['media']) * 100
+
+                if percentual > percentual_threshold:
+                    anomalias.append({
+                        'timestamp': dado['datetime'],
+                        'tipo': 'percentual',
+                        'latencia': lat,
+                        'esperado': stats['media'],
+                        'percentual': percentual,
+                        'severidade': 'alta' if percentual > 300 else 'media'
+                    })
+
+    return sorted(anomalias, key=lambda x: x['timestamp'])
+
+
+def analisar_dia_semana(dados_lista):
+    """
+    Agrupa dados por dia da semana e compara padrões
+
+    Args:
+        dados_lista: Lista de dados de testes
+
+    Returns:
+        list: [{'dia', 'latencia_media', 'vs_media_geral', 'pior_horario', 'pior_latencia', 'testes'}]
+    """
+    dias_semana = {i: {'latencias': [], 'testes': 0} for i in range(7)}
+    nomes_dias = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+
+    # Agrupar dados por dia da semana
+    for dado in dados_lista:
+        if not dado.get('datetime') or dado.get('ping_aghuse', {}).get('media') is None:
+            continue
+
+        dia = dado['datetime'].weekday()  # 0=Segunda, 6=Domingo
+        lat = dado['ping_aghuse']['media']
+
+        dias_semana[dia]['latencias'].append(lat)
+        dias_semana[dia]['testes'] += 1
+
+    # Calcular média geral
+    todas_latencias = [lat for dia in dias_semana.values() for lat in dia['latencias']]
+    if not todas_latencias:
+        return []
+
+    media_geral = sum(todas_latencias) / len(todas_latencias)
+
+    # Calcular estatísticas por dia - INCLUIR TODOS OS DIAS (com ou sem dados)
+    resultado = []
+    for i, nome in enumerate(nomes_dias):
+        # Se não tem dados, adicionar com zeros
+        if dias_semana[i]['testes'] == 0:
+            resultado.append({
+                'dia': nome,
+                'latencia_media': 0,
+                'vs_media_geral': 0,
+                'pior_horario': 0,
+                'pior_latencia': 0,
+                'testes': 0
+            })
+            continue
+
+        lats = dias_semana[i]['latencias']
+        media_dia = sum(lats) / len(lats)
+
+        # Encontrar pior horário desse dia da semana
+        piores = [(dado['datetime'].hour, dado['ping_aghuse']['media'])
+                  for dado in dados_lista
+                  if (dado.get('datetime') and
+                      dado['datetime'].weekday() == i and
+                      dado.get('ping_aghuse', {}).get('media') is not None)]
+
+        if piores:
+            pior = max(piores, key=lambda x: x[1])
+            pior_horario = pior[0]
+            pior_latencia = pior[1]
+        else:
+            pior_horario = 0
+            pior_latencia = 0
+
+        resultado.append({
+            'dia': nome,
+            'latencia_media': media_dia,
+            'vs_media_geral': ((media_dia - media_geral) / media_geral * 100) if media_geral > 0 else 0,
+            'pior_horario': pior_horario,
+            'pior_latencia': pior_latencia,
+            'testes': dias_semana[i]['testes']
+        })
+
+    # Retornar na ordem da semana (Segunda a Domingo) - NÃO ordenar por latência
+    return resultado
+
+
+def calcular_distribuicao(latencias, bins=None):
+    """
+    Calcula histograma de distribuição de latências
+
+    Args:
+        latencias: list de valores de latência
+        bins: list de tuplas (min, max) definindo faixas
+
+    Returns:
+        list: [{'faixa', 'min', 'max', 'frequencia', 'percentual'}]
+    """
+    if bins is None:
+        bins = [(0, 20), (20, 40), (40, 60), (60, 80), (80, float('inf'))]
+
+    if not latencias:
+        return []
+
+    distribuicao = []
+    total = len(latencias)
+
+    for min_val, max_val in bins:
+        count = sum(1 for lat in latencias if min_val <= lat < max_val)
+        percentual = (count / total * 100) if total > 0 else 0
+
+        # Formatar label
+        if max_val == float('inf'):
+            label = f"{min_val}+ms"
+        else:
+            label = f"{min_val}-{max_val}ms"
+
+        distribuicao.append({
+            'faixa': label,
+            'min': min_val,
+            'max': max_val,
+            'frequencia': count,
+            'percentual': round(percentual, 1)
+        })
+
+    return distribuicao
+
+# ============================================================================
+
+
 def gerar_relatorio_diario(dia, dados_dia, stats):
     """Gera relatório diário em formato markdown"""
     md = []
@@ -797,6 +1268,116 @@ def gerar_relatorio_semanal(dados_por_dia):
             md.append(f"\n*Exibindo 20 de {len(stats_geral['lista_testes_com_perda'])} incidentes. Consulte relatórios diários para detalhes completos.*\n")
         md.append("\n")
 
+    # ========================================================================
+    # ANÁLISES AVANÇADAS
+    # ========================================================================
+
+    # 1. Regressão Linear e Tendências
+    regressao = calcular_regressao_linear(todos_dados)
+    md.append("## Análise de Tendências\n\n")
+    md.append(f"**Regressão Linear**: {regressao['slope']:+.2f}ms/dia ")
+    md.append(f"(R² = {regressao['r_squared']:.3f}, Tendência: {regressao['tendencia']})\n\n")
+    md.append(f"**Previsão 7 dias**: {regressao['previsao_7d']:.1f}ms")
+
+    if regressao['r_squared'] < 0.5:
+        md.append(" ⚠️ *Baixa confiabilidade (R² < 0.5)*")
+    md.append("\n\n")
+
+    # 2. Horários de Pico
+    picos = detectar_horarios_pico(stats_latencia_hora)
+    md.append("## Horários de Pico\n\n")
+    if picos:
+        for pico in picos:
+            md.append(f"- **{pico['nome']}**: {pico['inicio']:02d}h-{pico['fim']:02d}h ")
+            md.append(f"(latência média {pico['latencia_media']:.1f}ms, ")
+            md.append(f"+{pico['diferenca_media']:.1f}ms acima da média)\n")
+    else:
+        md.append("Nenhum período de pico identificado.\n")
+    md.append("\n")
+
+    # 3. Score de Qualidade por Horário
+    scores_horario = {}
+    for hora in range(24):
+        if hora in stats_latencia_hora:
+            h_data = stats_latencia_hora[hora]
+            media_lat = h_data['media']
+
+            # Calcular percentual de perda naquela hora
+            testes_hora = [d for d in todos_dados if d.get('datetime') and d['datetime'].hour == hora]
+            testes_com_perda_hora = sum(1 for d in testes_hora if d.get('ping_aghuse', {}).get('perda', 0) > 0)
+            total_testes_hora = len(testes_hora)
+            perda_pct = (testes_com_perda_hora / total_testes_hora * 100) if total_testes_hora > 0 else 0
+
+            scores_horario[hora] = calcular_score_qualidade_horario(media_lat, perda_pct, LATENCIA_IDEAL)
+
+    md.append("## Score de Qualidade por Horário\n\n")
+    md.append("| Horário | Score | Classificação | Componente Latência | Componente Perda |\n")
+    md.append("|---------|-------|---------------|---------------------|------------------|\n")
+    for hora in sorted(scores_horario.keys()):
+        s = scores_horario[hora]
+        md.append(f"| {hora:02d}h | {s['score']} | {s['classificacao']} | ")
+        md.append(f"{s['componente_latencia']} | {s['componente_perda']} |\n")
+    md.append("\n")
+
+    # 4. Análise por Dia da Semana
+    analise_dias_semana = analisar_dia_semana(todos_dados)
+    if analise_dias_semana:
+        md.append("## Análise por Dia da Semana\n\n")
+        md.append("| Dia | Latência Média | vs. Média Geral | Pior Horário | Testes |\n")
+        md.append("|-----|----------------|-----------------|--------------|--------|\n")
+        for dia in analise_dias_semana:
+            if dia['testes'] == 0:
+                # Dia sem dados - mostrar zeros e aviso na mesma linha
+                md.append(f"| {dia['dia']} | - | - | - | 0 |\n")
+            elif dia['testes'] < 10:
+                # Poucos dados - mostrar com aviso
+                md.append(f"| {dia['dia']} | {dia['latencia_media']:.1f}ms ⚠️ | ")
+                md.append(f"{dia['vs_media_geral']:+.1f}% | ")
+                md.append(f"{dia['pior_horario']:02d}h ({dia['pior_latencia']:.1f}ms) | ")
+                md.append(f"{dia['testes']} |\n")
+            else:
+                # Dados suficientes - mostrar normalmente
+                md.append(f"| {dia['dia']} | {dia['latencia_media']:.1f}ms | ")
+                md.append(f"{dia['vs_media_geral']:+.1f}% | ")
+                md.append(f"{dia['pior_horario']:02d}h ({dia['pior_latencia']:.1f}ms) | ")
+                md.append(f"{dia['testes']} |\n")
+        md.append("\n")
+
+    # 5. Detecção de Anomalias
+    anomalias = detectar_anomalias(todos_dados, stats_latencia_hora)
+    md.append("## Alertas de Anomalias\n\n")
+    if anomalias:
+        md.append(f"Total de {len(anomalias)} anomalia(s) detectada(s):\n\n")
+        for anomalia in anomalias[:10]:  # Top 10
+            timestamp = anomalia['timestamp'].strftime('%d/%m às %H:%M')
+            if anomalia['tipo'] == 'desvio_padrao':
+                md.append(f"⚠️ **{timestamp}**: Latência {anomalia['latencia']}ms ")
+                md.append(f"({abs(anomalia['z_score']):.1f}σ acima do esperado {anomalia['esperado']:.1f}ms) ")
+                md.append(f"[Severidade: {anomalia['severidade']}]\n")
+            else:
+                md.append(f"⚠️ **{timestamp}**: Latência {anomalia['latencia']}ms ")
+                md.append(f"({anomalia['percentual']:.0f}% do esperado {anomalia['esperado']:.1f}ms) ")
+                md.append(f"[Severidade: {anomalia['severidade']}]\n")
+
+        if len(anomalias) > 10:
+            md.append(f"\n*Exibindo 10 de {len(anomalias)} anomalias. Anomalias indicam desvios significativos do padrão normal.*\n")
+    else:
+        md.append("Nenhuma anomalia detectada no período. ✅\n")
+    md.append("\n")
+
+    # 6. Distribuição de Latência
+    todas_latencias = [d['ping_aghuse']['media'] for d in todos_dados
+                       if d.get('ping_aghuse', {}).get('media') is not None]
+    distribuicao = calcular_distribuicao(todas_latencias)
+    md.append("## Distribuição de Latência\n\n")
+    md.append("| Faixa | Frequência | Percentual |\n")
+    md.append("|-------|-----------|------------|\n")
+    for bin in distribuicao:
+        md.append(f"| {bin['faixa']} | {bin['frequencia']} | {bin['percentual']}% |\n")
+    md.append("\n")
+
+    # ========================================================================
+
     # Análise e Conclusão (usando funções reutilizáveis)
     md.append("## Análise e Conclusão\n\n")
     md.append(gerar_analise_disponibilidade(stats_geral['disponibilidade']))
@@ -906,6 +1487,113 @@ def gerar_relatorio_geral(dados_por_dia):
         if len(stats_geral['lista_testes_com_perda']) > 30:
             md.append(f"\n*Exibindo 30 de {len(stats_geral['lista_testes_com_perda'])} incidentes. Consulte relatórios diários para informações completas.*\n")
         md.append("\n")
+
+    # ============================================================
+    # ANÁLISES AVANÇADAS
+    # ============================================================
+
+    # 1. Regressão Linear
+    regressao = calcular_regressao_linear(todos_dados)
+    md.append("\n## Análise de Tendências\n\n")
+    md.append(f"**Regressão Linear**: {regressao['slope']:+.2f}ms/dia ")
+    md.append(f"(R² = {regressao['r_squared']:.3f}, Tendência: {regressao['tendencia']})\n\n")
+    md.append(f"**Previsão 7 dias**: {regressao['previsao_7d']:.1f}ms")
+    if regressao['r_squared'] < 0.5:
+        md.append(f" ⚠️ *Baixa confiança (R² < 0.5)*")
+    md.append("\n\n")
+
+    # 2. Horários de Pico
+    picos = detectar_horarios_pico(stats_latencia_hora)
+    md.append("## Horários de Pico\n\n")
+    if picos:
+        for pico in picos:
+            md.append(f"- **{pico['nome']}**: {pico['inicio']:02d}h-{pico['fim']:02d}h ")
+            md.append(f"(latência média {pico['latencia_media']:.1f}ms, ")
+            md.append(f"+{pico['diferenca_media']:.1f}ms acima da média)\n")
+    else:
+        md.append("Nenhum período de pico identificado.\n")
+    md.append("\n")
+
+    # 3. Score de Qualidade por Horário
+    scores_horario = {}
+    for hora in range(24):
+        if hora in stats_latencia_hora:
+            h_data = stats_latencia_hora[hora]
+            media_lat = h_data['media']
+            testes_perda = h_data.get('testes_com_perda', 0)
+            total_testes = h_data.get('total_testes', 1)
+            perda_pct = (testes_perda / total_testes * 100) if total_testes > 0 else 0
+
+            scores_horario[hora] = calcular_score_qualidade_horario(
+                media_lat, perda_pct, LATENCIA_IDEAL
+            )
+
+    md.append("## Score de Qualidade por Horário\n\n")
+    md.append("| Horário | Score | Classificação | Latência | Perda |\n")
+    md.append("|---------|-------|---------------|----------|-------|\n")
+    for hora in sorted(scores_horario.keys()):
+        s = scores_horario[hora]
+        md.append(f"| {hora:02d}h | {s['score']} | {s['classificacao']} | ")
+        md.append(f"{s['componente_latencia']} | {s['componente_perda']} |\n")
+    md.append("\n")
+
+    # 4. Análise por Dia da Semana
+    analise_dias = analisar_dia_semana(todos_dados)
+    md.append("## Análise por Dia da Semana\n\n")
+    md.append("| Dia | Latência Média | vs. Média Geral | Pior Horário | Testes |\n")
+    md.append("|-----|----------------|-----------------|--------------|--------|\n")
+    for dia in analise_dias:
+        if dia['testes'] == 0:
+            # Dia sem dados - mostrar traços
+            md.append(f"| {dia['dia']} | - | - | - | 0 |\n")
+        elif dia['testes'] < 10:
+            # Poucos dados - mostrar com aviso
+            md.append(f"| {dia['dia']} | {dia['latencia_media']:.1f}ms ⚠️ | ")
+            md.append(f"{dia['vs_media_geral']:+.1f}% | ")
+            md.append(f"{dia['pior_horario']:02d}h ({dia['pior_latencia']:.1f}ms) | ")
+            md.append(f"{dia['testes']} |\n")
+        else:
+            # Dados suficientes - mostrar normalmente
+            md.append(f"| {dia['dia']} | {dia['latencia_media']:.1f}ms | ")
+            md.append(f"{dia['vs_media_geral']:+.1f}% | ")
+            md.append(f"{dia['pior_horario']:02d}h ({dia['pior_latencia']:.1f}ms) | ")
+            md.append(f"{dia['testes']} |\n")
+    md.append("\n")
+
+    # 5. Detecção de Anomalias
+    anomalias = detectar_anomalias(todos_dados, stats_latencia_hora)
+    md.append("## Alertas de Anomalias\n\n")
+    if anomalias:
+        md.append(f"Total de {len(anomalias)} anomalia(s) detectada(s):\n\n")
+        for anomalia in anomalias[:10]:  # Top 10
+            timestamp = anomalia['timestamp'].strftime('%d/%m às %H:%M')
+            if anomalia['tipo'] == 'desvio_padrao':
+                md.append(f"⚠️ **{timestamp}**: Latência {anomalia['latencia']}ms ")
+                md.append(f"({anomalia['z_score']:.1f}σ acima do esperado {anomalia['esperado']:.1f}ms)")
+                if anomalia['severidade'] == 'alta':
+                    md.append(" 🔴 **ALTA**")
+                md.append("\n")
+            else:
+                md.append(f"⚠️ **{timestamp}**: Latência {anomalia['latencia']}ms ")
+                md.append(f"({anomalia['percentual']:.0f}% do esperado {anomalia['esperado']:.1f}ms)")
+                if anomalia['severidade'] == 'alta':
+                    md.append(" 🔴 **ALTA**")
+                md.append("\n")
+        if len(anomalias) > 10:
+            md.append(f"\n*Exibindo 10 de {len(anomalias)} anomalias.*\n")
+    else:
+        md.append("Nenhuma anomalia detectada no período.\n")
+    md.append("\n")
+
+    # 6. Distribuição de Latência
+    todas_latencias = [d['ping_aghuse']['media'] for d in todos_dados if d['ping_aghuse']['media'] is not None]
+    distribuicao = calcular_distribuicao(todas_latencias)
+    md.append("## Distribuição de Latência\n\n")
+    md.append("| Faixa | Frequência | Percentual |\n")
+    md.append("|-------|-----------|------------|\n")
+    for bin_data in distribuicao:
+        md.append(f"| {bin_data['faixa']} | {bin_data['frequencia']} | {bin_data['percentual']}% |\n")
+    md.append("\n")
 
     # Análise e Conclusão
     md.append("## Análise e Conclusão\n\n")

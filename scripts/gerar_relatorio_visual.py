@@ -94,7 +94,15 @@ def parse_relatorio_semanal(file_path):
         'total_testes': 0,
         'testes_com_perda': 0,
         'dias': [],
-        'horarios': []
+        'horarios': [],
+        # Análises avançadas
+        'regressao': {},
+        'picos': [],
+        'scores_horario': [],
+        'analise_dias_semana': [],
+        'total_anomalias': 0,
+        'anomalias': [],
+        'distribuicao': []
     }
 
     # Extrair período
@@ -167,13 +175,112 @@ def parse_relatorio_semanal(file_path):
                     'perdas': perdas
                 })
 
+    # ============================================================
+    # PARSING DE ANÁLISES AVANÇADAS
+    # ============================================================
+
+    # 1. Regressão Linear
+    regressao_match = re.search(r'Regressão Linear.*?([+-]?[\d.]+)ms/dia.*?R² = ([\d.]+).*?Tendência: (\w+)', content)
+    if regressao_match:
+        data['regressao']['slope'] = float(regressao_match.group(1))
+        data['regressao']['r_squared'] = float(regressao_match.group(2))
+        data['regressao']['tendencia'] = regressao_match.group(3)
+
+    previsao_match = re.search(r'Previsão 7 dias.*?([\d.]+)ms', content)
+    if previsao_match:
+        data['regressao']['previsao_7d'] = float(previsao_match.group(1))
+
+    # 2. Horários de Pico
+    picos_section = re.findall(r'\*\*(.+?)\*\*:\s*(\d+)h-(\d+)h\s*\(latência média ([\d.]+)ms', content)
+    for nome, inicio, fim, lat in picos_section:
+        data['picos'].append({
+            'nome': nome,
+            'inicio': int(inicio),
+            'fim': int(fim),
+            'latencia_media': float(lat)
+        })
+
+    # 3. Scores por Horário
+    scores_section = re.search(r'## Score de Qualidade por Horário.*?\n\|.*?\n\|---.*?\n((?:\|.*?\n)+)', content, re.DOTALL)
+    if scores_section:
+        for line in scores_section.group(1).strip().split('\n'):
+            score_match = re.match(r'\|\s*(\d+)h\s*\|\s*([\d.]+)\s*\|\s*(\w+)', line)
+            if score_match:
+                data['scores_horario'].append({
+                    'hora': int(score_match.group(1)),
+                    'score': float(score_match.group(2)),
+                    'classificacao': score_match.group(3)
+                })
+
+    # 4. Análise por Dia da Semana
+    dias_semana_section = re.search(r'## Análise por Dia da Semana.*?\n\|.*?\n\|---.*?\n((?:\|.*?\n)+)', content, re.DOTALL)
+    if dias_semana_section:
+        for line in dias_semana_section.group(1).strip().split('\n'):
+            # Pular linhas de aviso (que contêm ⚠️)
+            if '⚠️' in line or 'Poucos dados' in line:
+                continue
+
+            # Tentar match com dados completos (com ⚠️ inline é ok, pois regex só captura números)
+            dia_match = re.match(r'\|\s*(\w+)\s*\|\s*([\d.]+)ms(?:\s*⚠️)?\s*\|\s*([+-][\d.]+)%\s*\|\s*(\d+)h\s*\(([\d.]+)ms\)', line)
+            if dia_match:
+                data['analise_dias_semana'].append({
+                    'dia': dia_match.group(1),
+                    'latencia_media': float(dia_match.group(2)),
+                    'vs_media': float(dia_match.group(3)),
+                    'pior_horario': int(dia_match.group(4)),
+                    'pior_latencia': float(dia_match.group(5))
+                })
+                continue
+
+            # Tentar match com linha sem dados (-)
+            dia_sem_dados_match = re.match(r'\|\s*(\w+)\s*\|\s*-\s*\|\s*-\s*\|\s*-\s*\|\s*0\s*\|', line)
+            if dia_sem_dados_match:
+                data['analise_dias_semana'].append({
+                    'dia': dia_sem_dados_match.group(1),
+                    'latencia_media': 0,
+                    'vs_media': 0,
+                    'pior_horario': 0,
+                    'pior_latencia': 0
+                })
+
+    # 5. Anomalias
+    anomalias_count_match = re.search(r'Total de (\d+) anomalia', content)
+    if anomalias_count_match:
+        data['total_anomalias'] = int(anomalias_count_match.group(1))
+
+    # Extrair lista de anomalias
+    anomalias_section = re.search(r'## Alertas de Anomalias.*?\n\n((?:⚠️.*?\n)+)', content, re.DOTALL)
+    if anomalias_section:
+        for line in anomalias_section.group(1).strip().split('\n'):
+            if line.startswith('⚠️'):
+                # Extrair timestamp e latência
+                anom_match = re.match(r'⚠️\s*\*\*(.+?)\*\*:\s*Latência\s*([\d.]+)ms', line)
+                if anom_match:
+                    data['anomalias'].append({
+                        'timestamp': anom_match.group(1),
+                        'latencia': float(anom_match.group(2)),
+                        'severidade': 'alta' if '🔴' in line else 'media'
+                    })
+
+    # 6. Distribuição (buscar pela tabela com 3 colunas: Faixa, Frequência, Percentual)
+    dist_section = re.search(r'## Distribuição de Latência\s*\n\s*\| Faixa \| Frequência \| Percentual \|.*?\n\|---.*?\n((?:\|.*?\n)+)', content, re.DOTALL)
+    if dist_section:
+        for line in dist_section.group(1).strip().split('\n'):
+            dist_match = re.match(r'\|\s*(.+?)\s*\|\s*(\d+)\s*\|\s*([\d.]+)%', line)
+            if dist_match:
+                data['distribuicao'].append({
+                    'faixa': dist_match.group(1).strip(),
+                    'frequencia': int(dist_match.group(2)),
+                    'percentual': float(dist_match.group(3))
+                })
+
     return data
 
 
 def generate_html_semanal(data, output_path):
-    """Gera HTML visual para relatório semanal com gráficos"""
+    """Gera HTML visual para relatório semanal/geral com gráficos e abas para análises avançadas"""
 
-    # Preparar dados para gráficos
+    # Preparar dados para gráficos básicos
     dias_labels = [d['data'] for d in data['dias']]
     dias_disp = [d['disponibilidade'] for d in data['dias']]
     dias_lat = [d['latencia'] for d in data['dias']]
@@ -181,6 +288,55 @@ def generate_html_semanal(data, output_path):
     horas_labels = [f"{h['hora']:02d}h" for h in data['horarios']]
     horas_lat = [h['latencia'] for h in data['horarios']]
     horas_perdas = [h['perdas'] for h in data['horarios']]
+
+    # Preparar dados para análises avançadas
+    scores_horas = [s['score'] for s in data.get('scores_horario', [])]
+    scores_labels = [f"{s['hora']:02d}h" for s in data.get('scores_horario', [])]
+
+    # Dados da distribuição
+    dist_labels = [d['faixa'] for d in data.get('distribuicao', [])]
+    dist_valores = [d['frequencia'] for d in data.get('distribuicao', [])]
+
+    # Dados de dias da semana
+    dias_semana_labels = [d['dia'] for d in data.get('analise_dias_semana', [])]
+    dias_semana_lat = [d['latencia_media'] for d in data.get('analise_dias_semana', [])]
+
+    # Dados para gráfico de tendências (regressão) - usar dados DIÁRIOS
+    baseline_ideal = 15.0  # Valor configurado em processar_relatorio.py
+    baseline_dados_diarios = [baseline_ideal] * len(dias_labels)
+
+    # Calcular linha de regressão se tiver dados de regressão
+    regressao = data.get('regressao', {})
+    linha_tendencia = []
+    if regressao and 'slope' in regressao and 'intercept' in regressao:
+        slope = regressao['slope']
+        intercept = regressao['intercept']
+        for i in range(len(dias_labels)):
+            linha_tendencia.append(slope * i + intercept)
+    else:
+        # Se não tiver regressão, linha vazia
+        linha_tendencia = [None] * len(dias_labels)
+
+    # Calcular previsão (próximos 2 dias como exemplo)
+    previsao_labels = []
+    previsao_valores = []
+    if regressao and 'slope' in regressao and 'intercept' in regressao:
+        num_dias = len(dias_labels)
+        # Adicionar 2 pontos de previsão
+        for i in range(2):
+            previsao_labels.append(f"D+{i+1}")
+            previsao_valores.append(slope * (num_dias + i) + intercept)
+
+    # Combinar labels para o gráfico (dias reais + previsão)
+    tendencia_labels = dias_labels + previsao_labels
+
+    # Combinar dados (dias reais + None para previsão)
+    tendencia_real = dias_lat + [None] * len(previsao_labels)
+    tendencia_linha = linha_tendencia + [linha_tendencia[-1] if linha_tendencia else None] * len(previsao_labels)
+    tendencia_baseline = baseline_dados_diarios + [baseline_ideal] * len(previsao_labels)
+
+    # Dados de previsão (começar do último dia real)
+    tendencia_previsao = [None] * (len(dias_labels) - 1) + [dias_lat[-1] if dias_lat else None] + previsao_valores
 
     html_content = f'''<!DOCTYPE html>
 <html lang="pt-BR">
@@ -275,6 +431,85 @@ def generate_html_semanal(data, output_path):
             position: relative;
             height: 350px;
         }}
+        /* Estilos para Abas */
+        .tabs {{
+            display: flex;
+            border-bottom: 2px solid #dee2e6;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }}
+        .tab-button {{
+            padding: 14px 28px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            color: #7f8c8d;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }}
+        .tab-button:hover {{
+            color: #3498db;
+            background: #f8f9fa;
+        }}
+        .tab-button.active {{
+            color: #3498db;
+            border-bottom-color: #3498db;
+        }}
+        .tab-content {{
+            display: none;
+            animation: fadeIn 0.3s;
+        }}
+        .tab-content.active {{
+            display: block;
+        }}
+        @keyframes fadeIn {{
+            from {{ opacity: 0; transform: translateY(-10px); }}
+            to {{ opacity: 1; transform: translateY(0); }}
+        }}
+        /* Estilos para cartões de análise */
+        .analysis-card {{
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3498db;
+        }}
+        .analysis-card h3 {{
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: #2c3e50;
+        }}
+        .analysis-card p {{
+            font-size: 14px;
+            line-height: 1.6;
+            color: #5a6c7d;
+        }}
+        .anomaly-list {{
+            list-style: none;
+            padding: 0;
+        }}
+        .anomaly-item {{
+            background: white;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            border-left: 3px solid #f39c12;
+        }}
+        .anomaly-item.high {{
+            border-left-color: #e74c3c;
+        }}
+        .anomaly-timestamp {{
+            font-weight: 600;
+            color: #2c3e50;
+        }}
+        .anomaly-details {{
+            font-size: 13px;
+            color: #7f8c8d;
+            margin-top: 4px;
+        }}
     </style>
 </head>
 <body>
@@ -304,31 +539,113 @@ def generate_html_semanal(data, output_path):
                 </div>
             </div>
 
-            <div class="chart-container">
-                <div class="chart-title">Evolução da Disponibilidade por Dia</div>
-                <div class="chart-wrapper">
-                    <canvas id="dispChart"></canvas>
+            <!-- Sistema de Abas -->
+            <div class="tabs">
+                <button class="tab-button active" data-tab="visao-geral">Visão Geral</button>
+                <button class="tab-button" data-tab="analise-avancada">Análise Avançada</button>
+                <button class="tab-button" data-tab="tendencias">Tendências</button>
+                <button class="tab-button" data-tab="anomalias">Anomalias</button>
+            </div>
+
+            <!-- Aba 1: Visão Geral -->
+            <div class="tab-content active" id="visao-geral">
+                <div class="chart-container">
+                    <div class="chart-title">Evolução da Disponibilidade por Dia</div>
+                    <div class="chart-wrapper">
+                        <canvas id="dispChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Evolução da Latência por Dia</div>
+                    <div class="chart-wrapper">
+                        <canvas id="latDiaChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Latência Média por Horário (Todo o Período)</div>
+                    <div class="chart-wrapper">
+                        <canvas id="latHoraChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Perdas por Horário</div>
+                    <div class="chart-wrapper">
+                        <canvas id="perdasChart"></canvas>
+                    </div>
                 </div>
             </div>
 
-            <div class="chart-container">
-                <div class="chart-title">Evolução da Latência por Dia</div>
-                <div class="chart-wrapper">
-                    <canvas id="latDiaChart"></canvas>
+            <!-- Aba 2: Análise Avançada -->
+            <div class="tab-content" id="analise-avancada">
+                <div class="chart-container">
+                    <div class="chart-title">Score de Qualidade por Horário (0-10)</div>
+                    <div class="chart-wrapper">
+                        <canvas id="scoresChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Distribuição de Latência</div>
+                    <div class="chart-wrapper">
+                        <canvas id="distribuicaoChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Comparação por Dia da Semana</div>
+                    <div class="chart-wrapper">
+                        <canvas id="diasSemanaChart"></canvas>
+                    </div>
                 </div>
             </div>
 
-            <div class="chart-container">
-                <div class="chart-title">Latência Média por Horário (Todo o Período)</div>
-                <div class="chart-wrapper">
-                    <canvas id="latHoraChart"></canvas>
+            <!-- Aba 3: Tendências -->
+            <div class="tab-content" id="tendencias">
+                <div class="analysis-card">
+                    <h3>Análise de Regressão Linear</h3>
+                    <p>
+                        <strong>Tendência:</strong> {data.get('regressao', {}).get('tendencia', 'N/A')}<br>
+                        <strong>Variação:</strong> {data.get('regressao', {}).get('slope', 0):.2f}ms/dia<br>
+                        <strong>Confiabilidade (R²):</strong> {data.get('regressao', {}).get('r_squared', 0):.3f}<br>
+                        <strong>Previsão 7 dias:</strong> {data.get('regressao', {}).get('previsao_7d', 0):.1f}ms
+                    </p>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Evolução Temporal: Tendência e Previsão</div>
+                    <div class="chart-wrapper">
+                        <canvas id="regressaoChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="analysis-card">
+                    <h3>Horários de Pico Detectados</h3>
+                    {''.join([f'<p><strong>{pico["nome"]}:</strong> {pico["inicio"]:02d}h-{pico["fim"]:02d}h (média {pico["latencia_media"]:.1f}ms)</p>' for pico in data.get('picos', [])])}
+                    {('<p>Nenhum período de pico identificado.</p>' if not data.get('picos') else '')}
                 </div>
             </div>
 
-            <div class="chart-container">
-                <div class="chart-title">Perdas por Horário</div>
-                <div class="chart-wrapper">
-                    <canvas id="perdasChart"></canvas>
+            <!-- Aba 4: Anomalias -->
+            <div class="tab-content" id="anomalias">
+                <div class="analysis-card">
+                    <h3>Resumo de Anomalias</h3>
+                    <p><strong>Total de anomalias detectadas:</strong> {data.get('total_anomalias', 0)}</p>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Top 10 Anomalias Detectadas</div>
+                    <ul class="anomaly-list">
+                        {''.join([f'''
+                        <li class="anomaly-item {'high' if anom.get('severidade') == 'alta' else ''}">
+                            <div class="anomaly-timestamp">{anom['timestamp']}</div>
+                            <div class="anomaly-details">Latência: {anom['latencia']}ms - Severidade: {anom.get('severidade', 'média').upper()}</div>
+                        </li>
+                        ''' for anom in data.get('anomalias', [])[:10]])}
+                        {('<li class="anomaly-item"><div class="anomaly-timestamp">Nenhuma anomalia detectada</div></li>' if not data.get('anomalias') else '')}
+                    </ul>
                 </div>
             </div>
         </div>
@@ -429,6 +746,167 @@ def generate_html_semanal(data, output_path):
                 plugins: {{ legend: {{ display: false }} }},
                 scales: {{ y: {{ beginAtZero: true, ticks: {{ stepSize: 1 }} }} }}
             }}
+        }});
+
+        // ============================================================
+        // Gráficos das Abas Avançadas
+        // ============================================================
+
+        // Gráfico de Scores de Qualidade
+        new Chart(document.getElementById('scoresChart'), {{
+            type: 'bar',
+            data: {{
+                labels: {json.dumps(scores_labels)},
+                datasets: [{{
+                    label: 'Score (0-10)',
+                    data: {json.dumps(scores_horas)},
+                    backgroundColor: function(context) {{
+                        const value = context.parsed.y;
+                        if (value >= 8.5) return '#27ae60';
+                        if (value >= 7.0) return '#3498db';
+                        if (value >= 5.5) return '#f39c12';
+                        if (value >= 4.0) return '#e67e22';
+                        return '#e74c3c';
+                    }},
+                    borderWidth: 0
+                }}]
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {{
+                    legend: {{ display: false }},
+                    tooltip: {{
+                        callbacks: {{
+                            label: function(context) {{
+                                const score = context.parsed.y;
+                                let classificacao = 'Ruim';
+                                if (score >= 8.5) classificacao = 'Excelente';
+                                else if (score >= 7.0) classificacao = 'Muito Bom';
+                                else if (score >= 5.5) classificacao = 'Bom';
+                                else if (score >= 4.0) classificacao = 'Regular';
+                                return 'Score: ' + score.toFixed(1) + ' (' + classificacao + ')';
+                            }}
+                        }}
+                    }}
+                }},
+                scales: {{ y: {{ beginAtZero: true, max: 10 }} }}
+            }}
+        }});
+
+        // Gráfico de Distribuição
+        new Chart(document.getElementById('distribuicaoChart'), {{
+            type: 'bar',
+            data: {{
+                labels: {json.dumps(dist_labels)},
+                datasets: [{{
+                    label: 'Frequência',
+                    data: {json.dumps(dist_valores)},
+                    backgroundColor: ['#27ae60', '#3498db', '#f39c12', '#e74c3c', '#95a5a6'],
+                    borderWidth: 0
+                }}]
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {{ legend: {{ display: false }} }},
+                scales: {{ y: {{ beginAtZero: true }} }}
+            }}
+        }});
+
+        // Gráfico Comparativo Dias da Semana
+        new Chart(document.getElementById('diasSemanaChart'), {{
+            type: 'bar',
+            data: {{
+                labels: {json.dumps(dias_semana_labels)},
+                datasets: [{{
+                    label: 'Latência Média (ms)',
+                    data: {json.dumps(dias_semana_lat)},
+                    backgroundColor: '#3498db',
+                    borderWidth: 0
+                }}]
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {{ legend: {{ display: false }} }},
+                scales: {{ y: {{ beginAtZero: true }} }}
+            }}
+        }});
+
+        // Gráfico de Tendências (Evolução Diária com Regressão e Previsão)
+        new Chart(document.getElementById('regressaoChart'), {{
+            type: 'line',
+            data: {{
+                labels: {json.dumps(tendencia_labels)},
+                datasets: [
+                    {{
+                        label: 'Latência Real',
+                        data: {json.dumps(tendencia_real)},
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }},
+                    {{
+                        label: 'Linha de Tendência',
+                        data: {json.dumps(tendencia_linha)},
+                        borderColor: '#e74c3c',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false,
+                        pointRadius: 0,
+                        tension: 0
+                    }},
+                    {{
+                        label: 'Previsão (próximos dias)',
+                        data: {json.dumps(tendencia_previsao)},
+                        borderColor: '#f39c12',
+                        borderWidth: 2,
+                        borderDash: [10, 5],
+                        fill: false,
+                        pointRadius: 4,
+                        tension: 0
+                    }},
+                    {{
+                        label: 'Baseline Ideal (15ms)',
+                        data: {json.dumps(tendencia_baseline)},
+                        borderColor: '#27ae60',
+                        borderWidth: 2,
+                        borderDash: [2, 2],
+                        fill: false,
+                        pointRadius: 0
+                    }}
+                ]
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {{
+                    legend: {{ display: true, position: 'top' }}
+                }},
+                scales: {{ y: {{ beginAtZero: true }} }}
+            }}
+        }});
+
+        // ============================================================
+        // Sistema de Abas - Troca de Tabs
+        // ============================================================
+        document.querySelectorAll('.tab-button').forEach(button => {{
+            button.addEventListener('click', () => {{
+                const tabId = button.dataset.tab;
+
+                // Remove active de todos
+                document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                // Ativa o selecionado
+                button.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+            }});
         }});
     </script>
 </body>

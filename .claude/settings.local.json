@@ -4,7 +4,10 @@
       "Bash(python processar_relatorio.py:*)",
       "Bash(python:*)",
       "Bash(gerar_relatorios.bat)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(cmd /c gerar_relatorios.bat)",
+      "Bash(del relatoriosRELATORIO_GERAL.md)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []
