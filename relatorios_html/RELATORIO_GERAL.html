@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatório Semanal AGHUSE - 03/12/2025 a 08/12/2025 (6 dias)</title>
+    <title>Relatório Semanal AGHUSE - 03/12/2025 a 10/12/2025 (8 dias)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
@@ -43,30 +43,54 @@
         }
         .metrics-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
             margin-bottom: 30px;
+        }
+
+        @media (min-width: 1200px) {
+            .metrics-row {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .metrics-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .metrics-row {
+                grid-template-columns: 1fr;
+            }
         }
         .metric-card {
             background: #f8f9fa;
-            padding: 20px;
+            padding: 18px;
             border-radius: 6px;
             border-left: 4px solid #3498db;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
         .metric-card.success { border-left-color: #27ae60; }
         .metric-card.warning { border-left-color: #f39c12; }
         .metric-card.danger { border-left-color: #e74c3c; }
         .metric-label {
-            font-size: 13px;
+            font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: #7f8c8d;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
+            font-weight: 600;
         }
         .metric-value {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 600;
             color: #2c3e50;
+            line-height: 1.2;
         }
         .metric-unit {
             font-size: 16px;
@@ -170,32 +194,74 @@
             color: #7f8c8d;
             margin-top: 4px;
         }
+
+        .btn-voltar {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin: 20px 0;
+        }
+
+        .btn-voltar:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-voltar::before {
+            content: '← ';
+        }
+
+        .back-button-container {
+            text-align: center;
+            padding: 20px 40px 0;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>Relatório Semanal - Monitoramento AGHUSE</h1>
-            <div class="subtitle">Período: 03/12/2025 a 08/12/2025 (6 dias)</div>
+            <div class="subtitle">Período: 03/12/2025 a 10/12/2025 (8 dias)</div>
+        </div>
+
+        <div class="back-button-container">
+            <a href="../index.html" class="btn-voltar">Voltar para Central de Relatórios</a>
         </div>
 
         <div class="content">
             <div class="metrics-row">
                 <div class="metric-card success">
                     <div class="metric-label">Disponibilidade</div>
-                    <div class="metric-value">99.45<span class="metric-unit">%</span></div>
+                    <div class="metric-value">99.37<span class="metric-unit">%</span></div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-label">Latência Média</div>
-                    <div class="metric-value">46.6<span class="metric-unit">ms</span></div>
+                    <div class="metric-label">Latência Média (AGHUSE)</div>
+                    <div class="metric-value">48.6<span class="metric-unit">ms</span></div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Latência Média (Rede Externa)</div>
+                    <div class="metric-value">43.4<span class="metric-unit">ms</span></div>
                 </div>
                 <div class="metric-card warning">
-                    <div class="metric-label">Total de Testes</div>
-                    <div class="metric-value">1396</div>
+                    <div class="metric-label">Horários com Perda (AGHUSE)</div>
+                    <div class="metric-value">24</div>
+                    <div class="metric-unit" style="font-size: 14px;">(178pkt perdidos)</div>
+                </div>
+                <div class="metric-card warning">
+                    <div class="metric-label">Horários com Perda (Rede Externa)</div>
+                    <div class="metric-value">20</div>
+                    <div class="metric-unit" style="font-size: 14px;">(98pkt perdidos)</div>
                 </div>
                 <div class="metric-card danger">
-                    <div class="metric-label">Testes com Perda</div>
-                    <div class="metric-value">127</div>
+                    <div class="metric-label">Total de Testes</div>
+                    <div class="metric-value">1877</div>
                 </div>
             </div>
 
@@ -217,21 +283,21 @@
                 </div>
 
                 <div class="chart-container">
-                    <div class="chart-title">Evolução da Latência por Dia</div>
+                    <div class="chart-title">Evolução da Latência por Dia - AGHUSE vs Rede Externa</div>
                     <div class="chart-wrapper">
                         <canvas id="latDiaChart"></canvas>
                     </div>
                 </div>
 
                 <div class="chart-container">
-                    <div class="chart-title">Latência Média por Horário (Todo o Período)</div>
+                    <div class="chart-title">Latência Média por Horário - AGHUSE vs Rede Externa (Todo o Período)</div>
                     <div class="chart-wrapper">
                         <canvas id="latHoraChart"></canvas>
                     </div>
                 </div>
 
                 <div class="chart-container">
-                    <div class="chart-title">Perdas por Horário</div>
+                    <div class="chart-title">Perdas por Horário - AGHUSE vs Rede Externa</div>
                     <div class="chart-wrapper">
                         <canvas id="perdasChart"></canvas>
                     </div>
@@ -241,14 +307,14 @@
             <!-- Aba 2: Análise Avançada -->
             <div class="tab-content" id="analise-avancada">
                 <div class="chart-container">
-                    <div class="chart-title">Score de Qualidade por Horário (0-10)</div>
+                    <div class="chart-title">Score de Qualidade por Horário - AGHUSE vs Rede Externa (0-10)</div>
                     <div class="chart-wrapper">
                         <canvas id="scoresChart"></canvas>
                     </div>
                 </div>
 
                 <div class="chart-container">
-                    <div class="chart-title">Distribuição de Latência</div>
+                    <div class="chart-title">Distribuição de Latência - AGHUSE vs Rede Externa</div>
                     <div class="chart-wrapper">
                         <canvas id="distribuicaoChart"></canvas>
                     </div>
@@ -267,10 +333,10 @@
                 <div class="analysis-card">
                     <h3>Análise de Regressão Linear</h3>
                     <p>
-                        <strong>Tendência:</strong> alta<br>
-                        <strong>Variação:</strong> 5.91ms/dia<br>
-                        <strong>Confiabilidade (R²):</strong> 0.302<br>
-                        <strong>Previsão 7 dias:</strong> 102.3ms
+                        <strong>Tendência:</strong> N/A<br>
+                        <strong>Variação:</strong> 0.00ms/dia<br>
+                        <strong>Confiabilidade (R²):</strong> 0.000<br>
+                        <strong>Previsão 7 dias:</strong> 0.0ms
                     </p>
                 </div>
 
@@ -283,7 +349,7 @@
 
                 <div class="analysis-card">
                     <h3>Horários de Pico Detectados</h3>
-                    <p><strong>Pico Vespertino:</strong> 15h-21h (média 53.1ms)</p>
+                    <p><strong>Pico Vespertino:</strong> 15h-16h (média 55.3ms)</p>
                     
                 </div>
             </div>
@@ -292,22 +358,12 @@
             <div class="tab-content" id="anomalias">
                 <div class="analysis-card">
                     <h3>Resumo de Anomalias</h3>
-                    <p><strong>Total de anomalias detectadas:</strong> 4</p>
+                    <p><strong>Total de anomalias detectadas:</strong> 5</p>
                 </div>
 
                 <div class="chart-container">
                     <div class="chart-title">Top 10 Anomalias Detectadas</div>
                     <ul class="anomaly-list">
-                        
-                        <li class="anomaly-item ">
-                            <div class="anomaly-timestamp">04/12 às 15:04</div>
-                            <div class="anomaly-details">Latência: 67.0ms - Severidade: MEDIA</div>
-                        </li>
-                        
-                        <li class="anomaly-item high">
-                            <div class="anomaly-timestamp">04/12 às 15:14</div>
-                            <div class="anomaly-details">Latência: 73.0ms - Severidade: ALTA</div>
-                        </li>
                         
                         <li class="anomaly-item high">
                             <div class="anomaly-timestamp">04/12 às 17:44</div>
@@ -317,6 +373,21 @@
                         <li class="anomaly-item ">
                             <div class="anomaly-timestamp">04/12 às 17:59</div>
                             <div class="anomaly-details">Latência: 66.0ms - Severidade: MEDIA</div>
+                        </li>
+                        
+                        <li class="anomaly-item high">
+                            <div class="anomaly-timestamp">08/12 às 19:44</div>
+                            <div class="anomaly-details">Latência: 70.0ms - Severidade: ALTA</div>
+                        </li>
+                        
+                        <li class="anomaly-item ">
+                            <div class="anomaly-timestamp">09/12 às 15:09</div>
+                            <div class="anomaly-details">Latência: 79.0ms - Severidade: MEDIA</div>
+                        </li>
+                        
+                        <li class="anomaly-item high">
+                            <div class="anomaly-timestamp">09/12 às 17:54</div>
+                            <div class="anomaly-details">Latência: 72.0ms - Severidade: ALTA</div>
                         </li>
                         
                         
@@ -334,10 +405,10 @@
         new Chart(document.getElementById('dispChart'), {
             type: 'line',
             data: {
-                labels: ["03/12/2025", "04/12/2025", "05/12/2025", "06/12/2025", "07/12/2025", "08/12/2025"],
+                labels: ["03/12/2025", "04/12/2025", "05/12/2025", "06/12/2025", "07/12/2025", "08/12/2025", "09/12/2025", "10/12/2025"],
                 datasets: [{
                     label: 'Disponibilidade (%)',
-                    data: [99.55, 99.13, 99.32, 99.77, 99.76, 99.2],
+                    data: [99.55, 99.13, 99.32, 99.77, 99.76, 99.31, 99.01, 99.24],
                     borderColor: '#27ae60',
                     backgroundColor: 'rgba(39, 174, 96, 0.1)',
                     borderWidth: 2,
@@ -359,66 +430,107 @@
         new Chart(document.getElementById('latDiaChart'), {
             type: 'bar',
             data: {
-                labels: ["03/12/2025", "04/12/2025", "05/12/2025", "06/12/2025", "07/12/2025", "08/12/2025"],
-                datasets: [{
-                    label: 'Latência (ms)',
-                    data: [7.8, 29.8, 50.7, 51.7, 53.9, 50.9],
-                    backgroundColor: '#3498db',
-                    borderWidth: 0
-                }]
+                labels: ["03/12/2025", "04/12/2025", "05/12/2025", "06/12/2025", "07/12/2025", "08/12/2025", "09/12/2025", "10/12/2025"],
+                datasets: [
+                    {
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: [7.8, 29.8, 50.7, 51.7, 53.9, 51.1, 55.5, 52.9],
+                        backgroundColor: '#3498db',
+                        borderWidth: 0
+                    },
+                    {
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: [45.0, 45.3, 45.7, 38.8, 35.0, 42.1, 50.0, 49.7],
+                        backgroundColor: '#e74c3c',
+                        borderWidth: 0
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
                 scales: { y: { beginAtZero: true } }
             }
         });
 
-        // Gráfico de Latência por Horário
+        // Gráfico de Latência por Horário - Comparativo AGHUSE vs Rede Externa
         new Chart(document.getElementById('latHoraChart'), {
             type: 'line',
             data: {
                 labels: ["00h", "01h", "02h", "03h", "04h", "05h", "06h", "07h", "08h", "09h", "10h", "11h", "12h", "13h", "14h", "15h", "16h", "17h", "18h", "19h", "20h", "21h", "22h", "23h"],
-                datasets: [{
-                    label: 'Latência (ms)',
-                    data: [41.7, 42.4, 42.9, 42.5, 41.9, 42.4, 43.8, 42.6, 43.2, 44.0, 49.0, 50.4, 43.6, 44.7, 50.1, 53.2, 53.5, 52.8, 52.7, 53.7, 53.4, 52.7, 44.8, 41.2],
-                    borderColor: '#3498db',
-                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.3
-                }]
+                datasets: [
+                    {
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: [44.1, 44.4, 45.0, 44.6, 44.2, 44.4, 47.4, 46.0, 46.3, 46.6, 50.3, 51.1, 47.1, 50.1, 52.5, 55.3, 55.3, 52.8, 52.5, 53.2, 53.0, 52.4, 46.3, 43.5],
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    },
+                    {
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: [42.0, 41.6, 41.6, 41.5, 41.6, 41.6, 41.2, 42.8, 44.7, 48.9, 46.8, 43.4, 43.2, 42.3, 42.6, 42.5, 43.4, 43.0, 43.8, 45.1, 44.6, 44.9, 44.7, 43.2],
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
                 scales: { y: { beginAtZero: true } }
             }
         });
 
-        // Gráfico de Perdas por Horário
+        // Gráfico de Perdas por Horário - Comparativo AGHUSE vs Rede Externa
         new Chart(document.getElementById('perdasChart'), {
             type: 'bar',
             data: {
                 labels: ["00h", "01h", "02h", "03h", "04h", "05h", "06h", "07h", "08h", "09h", "10h", "11h", "12h", "13h", "14h", "15h", "16h", "17h", "18h", "19h", "20h", "21h", "22h", "23h"],
-                datasets: [{
-                    label: 'Perdas',
-                    data: [1, 2, 3, 1, 1, 1, 4, 7, 10, 16, 14, 10, 13, 12, 6, 7, 2, 3, 6, 3, 2, 0, 3, 0],
-                    backgroundColor: function(context) {
-                        const value = context.parsed.y;
-                        if (value === 0) return '#95a5a6';
-                        if (value <= 5) return '#f39c12';
-                        return '#e74c3c';
+                datasets: [
+                    {
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: [1, 4, 1, 3, 1, 3, 2, 5, 15, 17, 23, 22, 12, 20, 9, 10, 7, 6, 5, 1, 2, 1, 4, 4],
+                        backgroundColor: '#3498db',
+                        borderWidth: 0
                     },
-                    borderWidth: 0
-                }]
+                    {
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: [0, 0, 1, 1, 0, 0, 2, 6, 10, 8, 4, 1, 4, 10, 6, 7, 8, 2, 1, 2, 1, 20, 1, 3],
+                        backgroundColor: '#e74c3c',
+                        borderWidth: 0
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
                 scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
             }
         });
@@ -432,25 +544,29 @@
             type: 'bar',
             data: {
                 labels: ["00h", "01h", "02h", "03h", "04h", "05h", "06h", "07h", "08h", "09h", "10h", "11h", "12h", "13h", "14h", "15h", "16h", "17h", "18h", "19h", "20h", "21h", "22h", "23h"],
-                datasets: [{
-                    label: 'Score (0-10)',
-                    data: [4.6, 3.5, 2.3, 4.5, 4.6, 4.5, 2.0, 1.6, 1.2, 1.1, 0.9, 0.8, 1.2, 1.0, 1.3, 1.1, 2.8, 1.7, 1.2, 1.6, 2.3, 4.7, 2.0, 5.5],
-                    backgroundColor: function(context) {
-                        const value = context.parsed.y;
-                        if (value >= 8.5) return '#27ae60';
-                        if (value >= 7.0) return '#3498db';
-                        if (value >= 5.5) return '#f39c12';
-                        if (value >= 4.0) return '#e67e22';
-                        return '#e74c3c';
+                datasets: [
+                    {
+                        label: 'Score AGHUSE',
+                        data: [4.5, 2.2, 4.4, 3.8, 4.5, 3.0, 3.7, 1.9, 1.0, 0.9, 0.8, 0.8, 0.9, 0.8, 1.3, 0.9, 1.2, 1.5, 1.6, 4.0, 3.2, 4.1, 2.0, 2.4],
+                        backgroundColor: '#FF8C00',
+                        borderWidth: 0
                     },
-                    borderWidth: 0
-                }]
+                    {
+                        label: 'Score Rede Externa',
+                        data: [5.4, 5.5, 4.9, 4.9, 5.5, 5.5, 4.3, 2.2, 1.4, 1.4, 2.1, 4.5, 2.2, 1.6, 2.0, 2.0, 1.7, 3.7, 4.5, 3.5, 4.4, 3.5, 4.4, 3.2],
+                        backgroundColor: '#DC143C',
+                        borderWidth: 0
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { display: false },
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -460,7 +576,7 @@
                                 else if (score >= 7.0) classificacao = 'Muito Bom';
                                 else if (score >= 5.5) classificacao = 'Bom';
                                 else if (score >= 4.0) classificacao = 'Regular';
-                                return 'Score: ' + score.toFixed(1) + ' (' + classificacao + ')';
+                                return context.dataset.label + ': ' + score.toFixed(1) + ' (' + classificacao + ')';
                             }
                         }
                     }
@@ -476,7 +592,7 @@
                 labels: ["0-20ms", "20-40ms", "40-60ms", "60-80ms", "80+ms"],
                 datasets: [{
                     label: 'Frequência',
-                    data: [177, 2, 1165, 52, 0],
+                    data: [177, 2, 1575, 113, 10],
                     backgroundColor: ['#27ae60', '#3498db', '#f39c12', '#e74c3c', '#95a5a6'],
                     borderWidth: 0
                 }]
@@ -496,7 +612,7 @@
                 labels: ["Segunda", "Ter\u00e7a", "Quarta", "Quinta", "Sexta", "S\u00e1bado", "Domingo"],
                 datasets: [{
                     label: 'Latência Média (ms)',
-                    data: [50.9, 0, 7.8, 29.8, 50.7, 51.7, 53.9],
+                    data: [51.1, 55.5, 46.4, 29.8, 50.7, 51.7, 53.9],
                     backgroundColor: '#3498db',
                     borderWidth: 0
                 }]
@@ -509,15 +625,15 @@
             }
         });
 
-        // Gráfico de Tendências (Evolução Diária com Regressão e Previsão)
+        // Gráfico de Tendências (Evolução Diária com Regressão e Previsão) - AGHUSE vs Rede Externa
         new Chart(document.getElementById('regressaoChart'), {
             type: 'line',
             data: {
-                labels: ["03/12/2025", "04/12/2025", "05/12/2025", "06/12/2025", "07/12/2025", "08/12/2025"],
+                labels: ["03/12/2025", "04/12/2025", "05/12/2025", "06/12/2025", "07/12/2025", "08/12/2025", "09/12/2025", "10/12/2025"],
                 datasets: [
                     {
-                        label: 'Latência Real',
-                        data: [7.8, 29.8, 50.7, 51.7, 53.9, 50.9],
+                        label: 'AGHUSE - Latência Real',
+                        data: [7.8, 29.8, 50.7, 51.7, 53.9, 51.1, 55.5, 52.9],
                         borderColor: '#3498db',
                         backgroundColor: 'rgba(52, 152, 219, 0.1)',
                         borderWidth: 3,
@@ -528,7 +644,7 @@
                     },
                     {
                         label: 'Linha de Tendência',
-                        data: [null, null, null, null, null, null],
+                        data: [null, null, null, null, null, null, null, null],
                         borderColor: '#e74c3c',
                         borderWidth: 2,
                         borderDash: [5, 5],
@@ -538,7 +654,7 @@
                     },
                     {
                         label: 'Previsão (próximos dias)',
-                        data: [null, null, null, null, null, 50.9],
+                        data: [null, null, null, null, null, null, null, 52.9],
                         borderColor: '#f39c12',
                         borderWidth: 2,
                         borderDash: [10, 5],
@@ -548,7 +664,7 @@
                     },
                     {
                         label: 'Baseline Ideal (15ms)',
-                        data: [15.0, 15.0, 15.0, 15.0, 15.0, 15.0],
+                        data: [15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0],
                         borderColor: '#27ae60',
                         borderWidth: 2,
                         borderDash: [2, 2],

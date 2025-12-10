@@ -10,6 +10,7 @@ echo.
 echo Este script vai gerar:
 echo   1. Relatorios MD (diario, semanal, geral)
 echo   2. Relatorios HTML visuais
+echo   3. Atualizar index.html automaticamente
 echo.
 pause
 
@@ -52,11 +53,26 @@ if %errorlevel% neq 0 (
 
 echo.
 echo ============================================================
+echo  PASSO 3/3: Atualizando index.html...
+echo ============================================================
+echo.
+
+python atualizar_index.py
+
+if %errorlevel% neq 0 (
+    echo.
+    echo [AVISO] Falha ao atualizar index.html!
+    echo.
+)
+
+echo.
+echo ============================================================
 echo  CONCLUIDO COM SUCESSO!
 echo ============================================================
 echo.
 echo Relatorios gerados:
 echo   - MD:   relatorios\
 echo   - HTML: relatorios_html\
+echo   - Index: index.html (atualizado)
 echo.
 pause

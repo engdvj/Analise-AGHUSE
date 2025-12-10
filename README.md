@@ -7,6 +7,8 @@ Sistema automatizado para monitorar conectividade com o servidor AGHUSE (10.252.
 ```
 ├── aghuse.bat                  # Coleta de dados (executar a cada 5 min)
 ├── gerar_relatorios.bat        # Gera todos os relatórios (MD + HTML)
+├── index.html                  # Central de Relatórios (página inicial)
+├── atualizar_index.py          # Atualiza index.html automaticamente
 ├── scripts/                    # Scripts Python
 │   ├── processar_relatorio.py       # Processa dados e gera MD
 │   └── gerar_relatorio_visual.py    # Gera relatórios HTML
@@ -40,6 +42,7 @@ Duplo clique em `gerar_relatorios.bat` - isso irá:
 1. Processar todos os arquivos de teste
 2. Gerar relatórios Markdown (diários, semanal e geral)
 3. Criar relatórios HTML visuais e interativos
+4. **Atualizar index.html automaticamente**
 
 **Ou executar manualmente:**
 ```bash
@@ -48,17 +51,28 @@ python scripts\processar_relatorio.py
 
 # Gerar apenas relatórios HTML
 python scripts\gerar_relatorio_visual.py
+
+# Atualizar index.html
+python atualizar_index.py
 ```
 
 ### 3. Visualizar Relatórios
 
-**Opção 1 - HTML Visual (Recomendado):**
+**🎯 Central de Relatórios (Recomendado):**
+Abra `index.html` no navegador - você terá:
+- **Calendário interativo** com todos os relatórios diários
+- Dias com relatórios disponíveis destacados em verde
+- Acesso rápido aos relatórios **Geral** e **Semanal**
+- Interface moderna e fácil de navegar
+- **Atualização automática** ao gerar novos relatórios
+
+**Opção 2 - Relatórios Individuais:**
 Abra os arquivos `.html` na pasta `relatorios_html/` em qualquer navegador web.
 - Interface visual moderna
 - Gráficos interativos
 - Melhor para apresentações
 
-**Opção 2 - Markdown:**
+**Opção 3 - Markdown:**
 Abra os arquivos `.md` na pasta `relatorios/` com qualquer editor de texto ou visualizador Markdown.
 - Formato texto
 - Fácil de copiar/compartilhar
@@ -75,40 +89,61 @@ Abra os arquivos `.md` na pasta `relatorios/` com qualquer editor de texto ou vi
 
 ### Relatório Semanal
 - Consolidação dos últimos 7 dias
-- Análise por dia
+- **Análises Avançadas**: Regressão linear, horários de pico, scores de qualidade
+- **Detecção de Anomalias**: Eventos isolados com latência extrema
+- **Análise por Dia da Semana**: Padrões semanais
+- **Distribuição de Latência**: Histograma de frequências
 - Horários críticos da semana
 - Incidentes principais
 
 ### Relatório Geral
 - Visão completa de todo o período monitorado
-- Estatísticas gerais
-- Tendências e padrões
+- Estatísticas gerais e tendências de longo prazo
+- Análise preditiva (previsão 7 dias)
+- Todas as análises avançadas do relatório semanal
 
 ## 📈 Como Interpretar
 
-### Status de Conexão
+> **📋 Documentação Completa**: Consulte [CRITERIOS_E_METODOLOGIA.md](CRITERIOS_E_METODOLOGIA.md) para explicação detalhada de **todos os critérios, fórmulas e metodologias** utilizadas nos relatórios.
 
-| Percentual | Status |
-|------------|--------|
-| ≥ 99.9% | Ótimo |
-| ≥ 99.0% | Bom |
-| ≥ 95.0% | Regular |
-| < 95.0% | Ruim |
+### Status de Conexão (Disponibilidade)
+
+| Percentual | Status | Descrição |
+|------------|--------|-----------|
+| ≥ 99.9% | 🟢 Ótimo | Conexão extremamente estável |
+| 99.0-99.9% | 🔵 Bom | Raras interrupções |
+| 95.0-99.0% | 🟡 Regular | Perdas ocasionais |
+| < 95.0% | 🔴 Ruim | Conexão instável |
 
 ### Tempo de Resposta (Latência)
 
-| Tempo | Qualidade |
-|-------|-----------|
-| < 10ms | Ótimo |
-| < 20ms | Bom |
-| < 50ms | Regular |
-| ≥ 50ms | Ruim |
+| Tempo | Qualidade | Uso |
+|-------|-----------|-----|
+| ≤ 15ms | 🏆 Excelente | Baseline ideal |
+| 16-30ms | 👍 Boa | Ótima para uso geral |
+| 31-50ms | ⚠️ Regular | Lentidão leve |
+| > 50ms | ❌ Ruim | Requer análise |
 
-### Estabilidade
+### Score de Qualidade (0-10)
 
-Mede a variação do tempo de resposta:
-- **Ótimo/Bom**: Conexão estável
-- **Regular/Ruim**: Conexão instável, com oscilações
+Score composto: **60% Latência** + **40% Perda de Pacotes**
+
+| Score | Classificação | Cores no Gráfico |
+|-------|---------------|------------------|
+| 8.5-10 | Excelente | 🟢 Verde |
+| 7.0-8.4 | Muito Bom | 🔵 Azul |
+| 5.5-6.9 | Bom | 🟡 Amarelo |
+| 4.0-5.4 | Regular | 🟠 Laranja |
+| < 4.0 | Ruim | 🔴 Vermelho |
+
+### Conceitos Avançados
+
+- **Horários de Pico**: Períodos com latência ≥10% acima da média por 3h+ consecutivas
+- **Anomalias**: Eventos isolados com latência >2.5σ ou >200% do esperado
+- **Regressão Linear**: Análise de tendência (alta/queda/estável) com previsão 7 dias
+- **Distribuição**: Histograma mostrando frequência de latências em diferentes faixas
+
+**💡 Dica**: Na página principal ([index.html](index.html)), clique no card **"Critérios e Metodologia"** para ver explicações visuais detalhadas em um modal interativo.
 
 ## 🔧 Requisitos
 
@@ -136,10 +171,43 @@ Mede a variação do tempo de resposta:
 
 ---
 
-**Versão**: 3.0
+## 📚 Documentação Adicional
+
+- **[index.html](index.html)** - Central de Relatórios com Modal de Critérios
+  - Clique no card "Critérios e Metodologia" (roxo, 📋)
+  - Modal interativo com 6 seções explicativas
+  - Tabelas visuais, badges coloridos e exemplos
+  - Acesso rápido direto da página principal
+
+- **[CRITERIOS_E_METODOLOGIA.md](CRITERIOS_E_METODOLOGIA.md)** - Documentação Técnica Completa
+  - Explicação detalhada de cada métrica
+  - Fórmulas matemáticas utilizadas
+  - Exemplos práticos de cálculo
+  - Referências e padrões da indústria
+
+- **[GUIA_RAPIDO_CRITERIOS.md](GUIA_RAPIDO_CRITERIOS.md)** - Referência Visual Rápida
+  - Diagramas ASCII ilustrativos
+  - Checklist de 3 passos
+  - Comparações lado a lado
+
+---
+
+**Versão**: 5.1
 **Atualização**: Dezembro 2025
 **Mudanças**:
-- Estrutura de diretórios otimizada (scripts organizados em pasta separada)
-- Geração automatizada de relatórios HTML visuais
-- Script único `gerar_relatorios.bat` para gerar tudo
-- Suporte para relatórios semanal e geral em HTML
+- ✨ **NOVO**: Modal de "Critérios e Metodologia" integrado no [index.html](index.html)
+  - Card dedicado na página principal (roxo, 📋)
+  - Modal interativo com 6 seções explicativas
+  - Design profissional com badges coloridos e tabelas
+  - Sem duplicação - removido dos relatórios individuais
+- ✨ **NOVO**: Documentação completa ([CRITERIOS_E_METODOLOGIA.md](CRITERIOS_E_METODOLOGIA.md))
+  - Todos os critérios, fórmulas e metodologias
+  - Exemplos práticos de cálculo
+  - Referências e padrões da indústria
+- ✨ **NOVO**: Guia visual rápido ([GUIA_RAPIDO_CRITERIOS.md](GUIA_RAPIDO_CRITERIOS.md))
+  - Diagramas ASCII ilustrativos
+  - Checklist de 3 passos
+- Transparência total: Todos os critérios agora visíveis e acessíveis
+- Central de Relatórios com calendário interativo
+- Atualização automática do index.html ao gerar relatórios
+- Design consistente com tema cinza escuro em todos os relatórios

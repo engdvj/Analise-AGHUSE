@@ -1,0 +1,1038 @@
+"""
+Script para atualizar index.html com lista atualizada de relatórios
+"""
+import os
+import re
+import json
+from pathlib import Path
+from datetime import datetime
+
+
+def listar_relatorios_diarios():
+    """Lista todos os relatórios diários disponíveis"""
+    relatorios_html = Path('relatorios_html')
+    diarios = sorted(relatorios_html.glob('RELATORIO_DIARIO_*.html'))
+
+    datas = []
+    for arquivo in diarios:
+        match = re.match(r'RELATORIO_DIARIO_(\d{4}-\d{2}-\d{2})\.html', arquivo.name)
+        if match:
+            datas.append(match.group(1))
+
+    return datas
+
+
+def listar_relatorios_semanais():
+    """Lista todos os relatórios semanais disponíveis"""
+    relatorios_html = Path('relatorios_html')
+    semanais = relatorios_html.glob('RELATORIO_SEMANAL_*.html')
+
+    relatorios = []
+    for arquivo in semanais:
+        match = re.match(r'RELATORIO_SEMANAL_(\d{2}-\d{2}-\d{4})_a_(\d{2}-\d{2}-\d{4})\.html', arquivo.name)
+        if match:
+            # Converter data de início para objeto datetime para ordenação
+            data_inicio = datetime.strptime(match.group(1), '%d-%m-%Y')
+            relatorios.append({
+                'filename': arquivo.name,
+                'startDate': match.group(1),
+                'endDate': match.group(2),
+                '_sort_date': data_inicio
+            })
+
+    # Ordenar por data de início (mais recente primeiro)
+    relatorios.sort(key=lambda x: x['_sort_date'], reverse=True)
+
+    # Remover campo auxiliar de ordenação
+    for rel in relatorios:
+        del rel['_sort_date']
+
+    return relatorios
+
+
+def criar_index_template():
+    """Cria um index.html base se não existir"""
+    template = '''<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central de Relatórios AGHUSE</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 40px 40px;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px 40px;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .action-card {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 6px;
+            text-decoration: none;
+            color: #2c3e50;
+            transition: all 0.3s ease;
+            border-left: 4px solid #3498db;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .action-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            background: #ffffff;
+        }
+
+        .action-card.success {
+            border-left-color: #27ae60;
+        }
+
+        .action-card.warning {
+            border-left-color: #f39c12;
+        }
+
+        .action-card-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .action-card h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .action-card p {
+            font-size: 13px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .calendar {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 25px;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .month-selector {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .month-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .month-btn:hover {
+            background: #2980b9;
+        }
+
+        .current-month {
+            font-size: 15px;
+            font-weight: 600;
+            color: #2c3e50;
+            min-width: 140px;
+            text-align: center;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .calendar-day-header {
+            text-align: center;
+            font-weight: 600;
+            color: #7f8c8d;
+            padding: 8px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #95a5a6;
+            cursor: default;
+            position: relative;
+            background: #ecf0f1;
+            min-height: 35px;
+            max-height: 45px;
+        }
+
+        .calendar-day.other-month {
+            opacity: 0.3;
+        }
+
+        .calendar-day.has-report {
+            background: white;
+            color: #2c3e50;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 2px solid #27ae60;
+        }
+
+        .calendar-day.has-report:hover {
+            background: #3498db;
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+        }
+
+        .calendar-day.today {
+            box-shadow: 0 0 0 2px #e74c3c;
+        }
+
+        .legend {
+            display: flex;
+            gap: 25px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #7f8c8d;
+        }
+
+        .legend-box {
+            width: 18px;
+            height: 18px;
+            border-radius: 3px;
+        }
+
+        .legend-box.available {
+            background: white;
+            border: 2px solid #27ae60;
+        }
+
+        .legend-box.today {
+            background: white;
+            border: 2px solid #e74c3c;
+        }
+
+        .legend-box.unavailable {
+            background: #ecf0f1;
+            border: 1px solid #bdc3c7;
+        }
+
+        .footer {
+            text-align: center;
+            color: #95a5a6;
+            margin-top: 30px;
+            padding: 20px;
+            font-size: 13px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(44, 62, 80, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 6px;
+            padding: 30px;
+            max-width: 450px;
+            width: 90%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 32px;
+            color: #95a5a6;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .modal-close:hover {
+            background: #ecf0f1;
+            color: #2c3e50;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn.primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .modal-btn.primary:hover {
+            background: #2980b9;
+        }
+
+        .modal-btn.secondary {
+            background: #ecf0f1;
+            color: #2c3e50;
+        }
+
+        .modal-btn.secondary:hover {
+            background: #bdc3c7;
+        }
+
+        /* Modal Large para Critérios */
+        .modal-content-large {
+            background: white;
+            border-radius: 8px;
+            padding: 40px;
+            max-width: 900px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .criterios-content {
+            margin-top: 20px;
+        }
+
+        .criteria-card {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3498db;
+        }
+
+        .criteria-card h3 {
+            color: #2c3e50;
+            margin-bottom: 12px;
+            font-size: 18px;
+        }
+
+        .criteria-card p {
+            color: #5a6c7d;
+            margin-bottom: 10px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .criteria-table {
+            width: 100%;
+            margin-top: 15px;
+            border-collapse: collapse;
+        }
+
+        .criteria-table td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 14px;
+        }
+
+        .criteria-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .criteria-table tr:hover {
+            background: white;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge-otimo {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-bom {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .badge-regular {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-ruim {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .note-box {
+            background: #fff3cd;
+            border-left: 4px solid #f39c12;
+            padding: 12px 15px;
+            margin-top: 15px;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #856404;
+        }
+
+        .doc-link {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .doc-link:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        @media (max-width: 768px) {
+            .modal-content-large {
+                padding: 25px;
+                width: 98%;
+            }
+
+            .criteria-card {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Central de Relatórios AGHUSE</h1>
+            <div class="subtitle">Sistema de Monitoramento de Conectividade</div>
+        </div>
+
+        <div class="content">
+            <div class="quick-actions">
+                <a href="relatorios_html/RELATORIO_GERAL.html" class="action-card success">
+                    <div class="action-card-icon">📊</div>
+                    <h3>Relatório Geral</h3>
+                    <p>Visão completa de todos os dados</p>
+                </a>
+                <a href="#" class="action-card warning" onclick="showSemanaisModal(event)">
+                    <div class="action-card-icon">📅</div>
+                    <h3>Relatórios Semanais</h3>
+                    <p>Selecionar semana para visualizar</p>
+                </a>
+                <a href="#" class="action-card" onclick="showCriterios(event)" style="border-left-color: #9b59b6;">
+                    <div class="action-card-icon">📋</div>
+                    <h3>Critérios e Metodologia</h3>
+                    <p>Como interpretamos os dados</p>
+                </a>
+            </div>
+
+            <div class="section-title">Relatórios Diários</div>
+
+            <div class="calendar">
+                <div class="calendar-header">
+                    <div class="month-selector">
+                        <button class="month-btn" onclick="changeMonth(-1)">← Anterior</button>
+                        <span class="current-month" id="currentMonth"></span>
+                        <button class="month-btn" onclick="changeMonth(1)">Próximo →</button>
+                    </div>
+                </div>
+
+                <div class="calendar-grid" id="calendarGrid"></div>
+
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-box available"></div>
+                        <span>Relatório disponível</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-box today"></div>
+                        <span>Dia atual</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-box unavailable"></div>
+                        <span>Sem relatório</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            Sistema de Monitoramento AGHUSE - 2025
+        </div>
+    </div>
+
+    <div class="modal" id="reportModal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Relatório do Dia</h2>
+            <p id="modalDate"></p>
+            <div class="modal-buttons">
+                <button class="modal-btn primary" onclick="openReport()">Abrir Relatório</button>
+                <button class="modal-btn secondary" onclick="closeModal()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Critérios e Metodologia -->
+    <div class="modal" id="criteriosModal">
+        <div class="modal-content-large">
+            <button class="modal-close" onclick="closeCriteriosModal()">×</button>
+            <h2 style="color: #2c3e50; margin-bottom: 20px;">📋 Critérios e Metodologia de Análise</h2>
+
+            <div class="criterios-content">
+                <!-- Status da Disponibilidade -->
+                <div class="criteria-card">
+                    <h3>📊 Status da Disponibilidade</h3>
+                    <p>A disponibilidade mede o percentual de pacotes entregues com sucesso:</p>
+                    <table class="criteria-table">
+                        <tr>
+                            <td><span class="badge badge-otimo">Ótimo</span></td>
+                            <td><strong>≥ 99.9%</strong></td>
+                            <td>Conexão extremamente estável</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-bom">Bom</span></td>
+                            <td><strong>99.0% - 99.9%</strong></td>
+                            <td>Conexão estável com raras interrupções</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-regular">Regular</span></td>
+                            <td><strong>95.0% - 99.0%</strong></td>
+                            <td>Conexão com perdas ocasionais</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-ruim">Ruim</span></td>
+                            <td><strong>< 95.0%</strong></td>
+                            <td>Conexão instável, requer atenção</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Classificação de Latência -->
+                <div class="criteria-card">
+                    <h3>⚡ Classificação de Latência</h3>
+                    <p>Latência é o tempo de resposta da conexão (quanto menor, melhor):</p>
+                    <table class="criteria-table">
+                        <tr>
+                            <td><span class="badge badge-otimo">Excelente</span></td>
+                            <td><strong>≤ 15ms</strong></td>
+                            <td>Baseline ideal - Resposta instantânea</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-bom">Boa</span></td>
+                            <td><strong>16-30ms</strong></td>
+                            <td>Ótima para uso geral</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-regular">Regular</span></td>
+                            <td><strong>31-50ms</strong></td>
+                            <td>Aceitável, pode haver lentidão leve</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-ruim">Ruim</span></td>
+                            <td><strong>> 50ms</strong></td>
+                            <td>Lentidão perceptível, requer análise</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Score de Qualidade -->
+                <div class="criteria-card">
+                    <h3>🎯 Score de Qualidade (0-10)</h3>
+                    <p>Score composto que avalia latência e perda de pacotes simultaneamente:</p>
+                    <div style="margin: 15px 0;">
+                        <strong>Composição:</strong>
+                        <ul style="margin-left: 20px; margin-top: 8px;">
+                            <li><strong>60%</strong> - Componente de Latência (0-6 pontos)</li>
+                            <li><strong>40%</strong> - Componente de Perda (0-4 pontos)</li>
+                        </ul>
+                    </div>
+                    <table class="criteria-table">
+                        <tr>
+                            <td><span class="badge" style="background: #27ae60; color: white;">Excelente</span></td>
+                            <td><strong>8.5 - 10.0</strong></td>
+                            <td>Qualidade superior</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge" style="background: #3498db; color: white;">Muito Bom</span></td>
+                            <td><strong>7.0 - 8.4</strong></td>
+                            <td>Qualidade alta</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge" style="background: #f39c12; color: white;">Bom</span></td>
+                            <td><strong>5.5 - 6.9</strong></td>
+                            <td>Qualidade satisfatória</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge" style="background: #e67e22; color: white;">Regular</span></td>
+                            <td><strong>4.0 - 5.4</strong></td>
+                            <td>Qualidade abaixo do ideal</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge" style="background: #e74c3c; color: white;">Ruim</span></td>
+                            <td><strong>< 4.0</strong></td>
+                            <td>Qualidade inadequada</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Horários de Pico -->
+                <div class="criteria-card">
+                    <h3>📈 Horários de Pico</h3>
+                    <p>Períodos identificados automaticamente quando a latência está significativamente acima da média:</p>
+                    <div style="margin: 15px 0;">
+                        <strong>Critérios de Detecção:</strong>
+                        <ul style="margin-left: 20px; margin-top: 8px;">
+                            <li><strong>Threshold:</strong> Latência ≥ 10% acima da média geral</li>
+                            <li><strong>Duração mínima:</strong> 3 horas consecutivas</li>
+                            <li><strong>Classificação:</strong> Pico Matinal (8h-12h), Pico Vespertino (14h-18h), Pico Noturno (20h-6h)</li>
+                        </ul>
+                    </div>
+                    <div class="note-box">
+                        💡 <strong>Exemplo:</strong> Se a média geral é 50ms, horários com 55ms+ por 3h+ são considerados pico.
+                    </div>
+                </div>
+
+                <!-- Anomalias -->
+                <div class="criteria-card">
+                    <h3>⚠️ Detecção de Anomalias</h3>
+                    <p>Anomalias são eventos isolados onde a latência está drasticamente fora do padrão esperado:</p>
+                    <div style="margin: 15px 0;">
+                        <strong>Métodos de Detecção:</strong>
+                        <ul style="margin-left: 20px; margin-top: 8px;">
+                            <li><strong>Desvio Padrão:</strong> Latência > 2.5σ (desvios padrão) acima da média do horário</li>
+                            <li><strong>Percentual:</strong> Latência > 200% do valor esperado para aquele horário</li>
+                        </ul>
+                    </div>
+                    <div style="margin: 15px 0;">
+                        <strong>Níveis de Severidade:</strong>
+                        <ul style="margin-left: 20px; margin-top: 8px;">
+                            <li><strong>Média:</strong> 2.5-3.0σ ou 200-300% do esperado</li>
+                            <li><strong>Alta:</strong> > 3.0σ ou > 300% do esperado</li>
+                        </ul>
+                    </div>
+                    <div class="note-box">
+                        💡 <strong>Diferença:</strong> Picos são períodos prolongados; anomalias são eventos pontuais extremos.
+                    </div>
+                </div>
+
+                <!-- Metodologia de Coleta -->
+                <div class="criteria-card">
+                    <h3>🔬 Metodologia de Coleta de Dados</h3>
+                    <div style="margin: 15px 0;">
+                        <ul style="margin-left: 20px;">
+                            <li><strong>Frequência:</strong> Testes executados a cada 5 minutos (288 testes/dia)</li>
+                            <li><strong>Protocolo:</strong> ICMP Echo Request (ping)</li>
+                            <li><strong>Pacotes por teste:</strong> 20 pacotes</li>
+                            <li><strong>Destino:</strong> aghuse.saude.ba.gov.br</li>
+                            <li><strong>Métricas coletadas:</strong> Latência mínima, média, máxima e perda de pacotes</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Documentação Completa -->
+                <div class="criteria-card" style="background: #e8f4f8; border-left-color: #3498db;">
+                    <h3>📚 Documentação Completa</h3>
+                    <p>Para mais detalhes técnicos, fórmulas matemáticas e exemplos de cálculo, consulte:</p>
+                    <div style="margin-top: 15px;">
+                        <a href="CRITERIOS_E_METODOLOGIA.md" target="_blank" class="doc-link">
+                            📄 CRITERIOS_E_METODOLOGIA.md
+                        </a>
+                        <p style="margin-top: 8px; color: #7f8c8d; font-size: 13px;">
+                            Documento técnico completo com todas as fórmulas, exemplos e padrões da indústria
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-buttons" style="margin-top: 30px;">
+                <button class="modal-btn secondary" onclick="closeCriteriosModal()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Relatórios Semanais -->
+    <div class="modal" id="semanaisModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeSemanaisModal()">×</button>
+            <h2 style="color: #2c3e50; margin-bottom: 10px;">📅 Relatórios Semanais</h2>
+            <p style="color: #7f8c8d; margin-bottom: 30px;">Selecione uma semana para visualizar o relatório detalhado</p>
+
+            <div id="semanaisList" style="max-height: 400px; overflow-y: auto;">
+                <!-- Lista será preenchida dinamicamente -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const availableReports = new Set([]);
+
+        let currentDate = new Date();
+        let currentYear = currentDate.getFullYear();
+        let currentMonth = currentDate.getMonth();
+        let selectedDate = null;
+
+        const monthNames = [
+            'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+        ];
+
+        const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+
+            document.getElementById('currentMonth').textContent =
+                `${monthNames[currentMonth]} ${currentYear}`;
+
+            dayNames.forEach(day => {
+                const header = document.createElement('div');
+                header.className = 'calendar-day-header';
+                header.textContent = day;
+                grid.appendChild(header);
+            });
+
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            const lastDayPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
+            const lastDay = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+            for (let i = firstDay - 1; i >= 0; i--) {
+                const day = document.createElement('div');
+                day.className = 'calendar-day other-month';
+                day.textContent = lastDayPrevMonth - i;
+                grid.appendChild(day);
+            }
+
+            const today = new Date();
+            for (let i = 1; i <= lastDay; i++) {
+                const day = document.createElement('div');
+                day.className = 'calendar-day';
+                day.textContent = i;
+
+                const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+
+                if (availableReports.has(dateStr)) {
+                    day.classList.add('has-report');
+                    day.onclick = () => openReportModal(dateStr);
+                }
+
+                if (i === today.getDate() &&
+                    currentMonth === today.getMonth() &&
+                    currentYear === today.getFullYear()) {
+                    day.classList.add('today');
+                }
+
+                grid.appendChild(day);
+            }
+
+            const remainingDays = 42 - (firstDay + lastDay);
+            for (let i = 1; i <= remainingDays; i++) {
+                const day = document.createElement('div');
+                day.className = 'calendar-day other-month';
+                day.textContent = i;
+                grid.appendChild(day);
+            }
+        }
+
+        function changeMonth(direction) {
+            currentMonth += direction;
+
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            } else if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+
+            renderCalendar();
+        }
+
+        function openReportModal(dateStr) {
+            selectedDate = dateStr;
+            const [year, month, day] = dateStr.split('-');
+            const date = new Date(year, month - 1, day);
+
+            document.getElementById('modalTitle').textContent = 'Relatório Diário';
+            document.getElementById('modalDate').textContent =
+                `${day}/${month}/${year} - ${dayNames[date.getDay()]}`;
+
+            document.getElementById('reportModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('reportModal').classList.remove('active');
+            selectedDate = null;
+        }
+
+        function openReport() {
+            if (selectedDate) {
+                window.location.href = `relatorios_html/RELATORIO_DIARIO_${selectedDate}.html`;
+            }
+        }
+
+        document.getElementById('reportModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+                closeCriteriosModal();
+                closeSemanaisModal();
+            }
+        });
+
+        // Funções para Modal de Critérios
+        function showCriterios(event) {
+            event.preventDefault();
+            document.getElementById('criteriosModal').classList.add('active');
+        }
+
+        function closeCriteriosModal() {
+            document.getElementById('criteriosModal').classList.remove('active');
+        }
+
+        // Fechar modal de critérios clicando fora
+        document.getElementById('criteriosModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeCriteriosModal();
+            }
+        });
+
+        const weeklyReports = [];
+
+        function showSemanaisModal(event) {
+            event.preventDefault();
+            renderSemanaisList();
+            document.getElementById('semanaisModal').classList.add('active');
+        }
+
+        function closeSemanaisModal() {
+            document.getElementById('semanaisModal').classList.remove('active');
+        }
+
+        function renderSemanaisList() {
+            const list = document.getElementById('semanaisList');
+
+            if (weeklyReports.length === 0) {
+                list.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #7f8c8d;">
+                        <div style="font-size: 48px; margin-bottom: 15px;">📭</div>
+                        <p>Nenhum relatório semanal disponível ainda.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = weeklyReports.map((report, index) => `
+                <a href="relatorios_html/${report.filename}"
+                   style="display: flex; align-items: center; justify-content: space-between; padding: 18px;
+                          margin-bottom: 12px; background: #f8f9fa; border-radius: 8px; text-decoration: none;
+                          color: #2c3e50; transition: all 0.2s ease; border-left: 4px solid #667eea;"
+                   onmouseover="this.style.background='#e8f4f8'; this.style.paddingLeft='24px'"
+                   onmouseout="this.style.background='#f8f9fa'; this.style.paddingLeft='18px'">
+                    <div>
+                        <div style="font-size: 16px; font-weight: 600; margin-bottom: 5px;">
+                            Semana ${weeklyReports.length - index}
+                        </div>
+                        <div style="font-size: 13px; color: #7f8c8d;">
+                            ${report.startDate.replace(/-/g, '/')} a ${report.endDate.replace(/-/g, '/')}
+                        </div>
+                    </div>
+                    <span style="color: #bdc3c7; font-size: 20px;">→</span>
+                </a>
+            `).join('');
+        }
+
+        document.getElementById('semanaisModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeSemanaisModal();
+            }
+        });
+
+        renderCalendar();
+    </script>
+</body>
+</html>'''
+    return template
+
+
+def atualizar_index():
+    """Atualiza index.html com listas de relatórios"""
+    index_path = Path('index.html')
+
+    if not index_path.exists():
+        print("[AVISO] index.html não encontrado, criando novo arquivo...")
+        # Criar index.html a partir do template
+        conteudo = criar_index_template()
+        print("[OK] index.html criado com sucesso")
+    else:
+        # Ler index atual
+        with open(index_path, 'r', encoding='utf-8') as f:
+            conteudo = f.read()
+
+    # Listar relatórios
+    diarios = listar_relatorios_diarios()
+    semanais = listar_relatorios_semanais()
+
+    print(f"Encontrados {len(diarios)} relatórios diários")
+    print(f"Encontrados {len(semanais)} relatórios semanais")
+
+    # Atualizar lista de relatórios diários (availableReports)
+    diarios_js = json.dumps(diarios, indent=12)
+    padrao_diarios = r'const availableReports = new Set\(\[.*?\]\);'
+    novo_diarios = f'const availableReports = new Set({diarios_js});'
+
+    if re.search(padrao_diarios, conteudo, re.DOTALL):
+        conteudo = re.sub(padrao_diarios, novo_diarios, conteudo, flags=re.DOTALL)
+        print("[OK] Lista de relatórios diários atualizada")
+    else:
+        print("[AVISO] Padrão de relatórios diários não encontrado")
+
+    # Atualizar lista de relatórios semanais (weeklyReports)
+    semanais_js = json.dumps(semanais, indent=12)
+    padrao_semanais = r'const weeklyReports = \[.*?\];'
+    novo_semanais = f'const weeklyReports = {semanais_js};'
+
+    if re.search(padrao_semanais, conteudo, re.DOTALL):
+        conteudo = re.sub(padrao_semanais, novo_semanais, conteudo, flags=re.DOTALL)
+        print("[OK] Lista de relatórios semanais atualizada")
+    else:
+        print("[AVISO] Padrão de relatórios semanais não encontrado")
+
+    # Salvar index atualizado
+    with open(index_path, 'w', encoding='utf-8') as f:
+        f.write(conteudo)
+
+    print(f"\n[OK] index.html atualizado!")
+    print(f"  - {len(diarios)} relatórios diários")
+    print(f"  - {len(semanais)} relatórios semanais")
+
+
+if __name__ == '__main__':
+    atualizar_index()

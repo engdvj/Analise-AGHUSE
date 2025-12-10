@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório AGHUSE - 10/12/2025</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px 40px;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px 40px;
+        }
+
+        .metrics-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        @media (min-width: 1200px) {
+            .metrics-row {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .metrics-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .metrics-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .metric-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            border-left: 4px solid #dee2e6;
+        }
+
+        .metric-card.primary {
+            border-left-color: #3498db;
+        }
+
+        .metric-card.success {
+            border-left-color: #27ae60;
+        }
+
+        .metric-card.warning {
+            border-left-color: #f39c12;
+        }
+
+        .metric-card.danger {
+            border-left-color: #e74c3c;
+        }
+
+        .metric-label {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #7f8c8d;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: 600;
+            color: #2c3e50;
+            line-height: 1;
+        }
+
+        .metric-unit {
+            font-size: 16px;
+            color: #95a5a6;
+            margin-left: 4px;
+        }
+
+        .metric-status {
+            font-size: 14px;
+            margin-top: 6px;
+            color: #7f8c8d;
+            font-weight: 500;
+        }
+
+        .charts-section {
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+
+        .chart-wrapper.large {
+            height: 400px;
+        }
+
+        .table-section {
+            margin-top: 30px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #f8f9fa;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        th {
+            background: #ecf0f1;
+            padding: 12px 15px;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+            color: #2c3e50;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 14px;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background: #ffffff;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-otimo {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-bom {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .status-regular {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-ruim {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .perda-indicator {
+            color: #e74c3c;
+            font-weight: 500;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header, .content {
+                padding: 20px;
+            }
+            .metrics-row {
+                grid-template-columns: 1fr;
+            }
+            .chart-wrapper {
+                height: 250px;
+            }
+        }
+
+        .btn-voltar {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin: 20px 0;
+        }
+
+        .btn-voltar:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-voltar::before {
+            content: '← ';
+        }
+
+        .back-button-container {
+            text-align: center;
+            padding: 20px 40px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Relatório de Conectividade AGHUSE</h1>
+            <div class="subtitle">Análise do dia 10/12/2025</div>
+        </div>
+
+        <div class="back-button-container">
+            <a href="../index.html" class="btn-voltar">Voltar para Central de Relatórios</a>
+        </div>
+
+        <div class="content">
+            <div class="metrics-row">
+                <div class="metric-card success">
+                    <div class="metric-label">Disponibilidade</div>
+                    <div class="metric-value">99.24<span class="metric-unit">%</span></div>
+                    <div class="metric-status">BOM</div>
+                </div>
+
+                <div class="metric-card primary">
+                    <div class="metric-label">Latência Média (AGHUSE)</div>
+                    <div class="metric-value">52.8<span class="metric-unit">ms</span></div>
+                    <div class="metric-status">Máxima: 60.2ms</div>
+                </div>
+
+                <div class="metric-card primary">
+                    <div class="metric-label">Latência Média (Rede Externa)</div>
+                    <div class="metric-value">49.7<span class="metric-unit">ms</span></div>
+                    <div class="metric-status">Máxima: 54.8ms</div>
+                </div>
+
+                <div class="metric-card warning">
+                    <div class="metric-label">Horários com Perda (AGHUSE)</div>
+                    <div class="metric-value">7</div>
+                    <div class="metric-status">Total de 8pkt perdidos</div>
+                </div>
+
+                <div class="metric-card warning">
+                    <div class="metric-label">Horários com Perda (Rede Externa)</div>
+                    <div class="metric-value">1</div>
+                    <div class="metric-status">Total de 1pkt perdidos</div>
+                </div>
+
+                <div class="metric-card danger">
+                    <div class="metric-label">Horários com Lentidão</div>
+                    <div class="metric-value">132</div>
+                    <div class="metric-status">Latência > 20ms</div>
+                </div>
+            </div>
+
+            <div class="charts-section">
+                <div class="chart-container">
+                    <div class="chart-title">Latência por Horário - AGHUSE vs Rede Externa</div>
+                    <div class="chart-wrapper large">
+                        <canvas id="latencyChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Perdas de Conexão por Horário - AGHUSE vs Rede Externa</div>
+                    <div class="chart-wrapper">
+                        <canvas id="lossChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-section">
+                <div class="section-title">Desempenho Detalhado por Horário - AGHUSE vs Rede Externa</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <!-- Tabela AGHUSE -->
+                    <div>
+                        <h3 style="color: #3498db; font-size: 16px; margin-bottom: 10px; text-align: center;">AGHUSE (10.252.17.132)</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Horário</th>
+                                    <th>Latência Média</th>
+                                    <th>Mín - Máx</th>
+                                    <th>Status</th>
+                                    <th>Perdas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                                <tr>
+                                    <td>00h</td>
+                                    <td>50.6 ms</td>
+                                    <td>48 - 77 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>01h</td>
+                                    <td>48.4 ms</td>
+                                    <td>48 - 49 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
+
+                                <tr>
+                                    <td>02h</td>
+                                    <td>48.4 ms</td>
+                                    <td>48 - 49 ms</td>
+                                    <td><span class="status-badge status-bom">Bom</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>03h</td>
+                                    <td>48.7 ms</td>
+                                    <td>48 - 51 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
+
+                                <tr>
+                                    <td>04h</td>
+                                    <td>48.4 ms</td>
+                                    <td>48 - 49 ms</td>
+                                    <td><span class="status-badge status-bom">Bom</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>05h</td>
+                                    <td>48.8 ms</td>
+                                    <td>48 - 51 ms</td>
+                                    <td><span class="status-badge status-bom">Bom</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>06h</td>
+                                    <td>60.2 ms</td>
+                                    <td>51 - 71 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
+
+                                <tr>
+                                    <td>07h</td>
+                                    <td>56.3 ms</td>
+                                    <td>56 - 57 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
+
+                                <tr>
+                                    <td>08h</td>
+                                    <td>56.9 ms</td>
+                                    <td>56 - 60 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
+
+                                <tr>
+                                    <td>09h</td>
+                                    <td>56.8 ms</td>
+                                    <td>56 - 60 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
+
+                                <tr>
+                                    <td>10h</td>
+                                    <td>57.2 ms</td>
+                                    <td>56 - 59 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">2</span></td>
+                                </tr>
+
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Tabela Rede Externa -->
+                    <div>
+                        <h3 style="color: #e74c3c; font-size: 16px; margin-bottom: 10px; text-align: center;">Rede Externa (8.8.8.8)</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Horário</th>
+                                    <th>Latência Média</th>
+                                    <th>Mín - Máx</th>
+                                    <th>Status</th>
+                                    <th>Perdas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                                <tr>
+                                    <td>00h</td>
+                                    <td>49.2 ms</td>
+                                    <td>49 - 50 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>01h</td>
+                                    <td>49.3 ms</td>
+                                    <td>49 - 51 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>02h</td>
+                                    <td>49.2 ms</td>
+                                    <td>49 - 50 ms</td>
+                                    <td><span class="status-badge status-bom">Bom</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>03h</td>
+                                    <td>49.1 ms</td>
+                                    <td>49 - 50 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>04h</td>
+                                    <td>49.0 ms</td>
+                                    <td>49 - 49 ms</td>
+                                    <td><span class="status-badge status-bom">Bom</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>05h</td>
+                                    <td>49.0 ms</td>
+                                    <td>49 - 49 ms</td>
+                                    <td><span class="status-badge status-bom">Bom</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>06h</td>
+                                    <td>44.8 ms</td>
+                                    <td>40 - 50 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>07h</td>
+                                    <td>47.5 ms</td>
+                                    <td>40 - 55 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>08h</td>
+                                    <td>52.2 ms</td>
+                                    <td>50 - 56 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>09h</td>
+                                    <td>54.8 ms</td>
+                                    <td>53 - 57 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
+
+                                <tr>
+                                    <td>10h</td>
+                                    <td>52.3 ms</td>
+                                    <td>41 - 70 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+        Chart.defaults.color = '#7f8c8d';
+
+        // Gráfico de Latência - Comparativo AGHUSE vs Rede Externa
+        const latencyCtx = document.getElementById('latencyChart').getContext('2d');
+        new Chart(latencyCtx, {
+            type: 'line',
+            data: {
+                labels: ["0h", "1h", "2h", "3h", "4h", "5h", "6h", "7h", "8h", "9h", "10h"],
+                datasets: [
+                    {
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: [50.6, 48.4, 48.4, 48.7, 48.4, 48.8, 60.2, 56.3, 56.9, 56.8, 57.2],
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    },
+                    {
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: [49.2, 49.3, 49.2, 49.1, 49.0, 49.0, 44.8, 47.5, 52.2, 54.8, 52.3],
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(44, 62, 80, 0.9)',
+                        padding: 12,
+                        titleFont: {
+                            size: 14
+                        },
+                        bodyFont: {
+                            size: 13
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: '#ecf0f1'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value + ' ms';
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+
+        // Gráfico de Perdas - Comparativo AGHUSE vs Rede Externa
+        const lossCtx = document.getElementById('lossChart').getContext('2d');
+        new Chart(lossCtx, {
+            type: 'bar',
+            data: {
+                labels: ["0h", "1h", "2h", "3h", "4h", "5h", "6h", "7h", "8h", "9h", "10h"],
+                datasets: [
+                    {
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: [0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 2],
+                        backgroundColor: '#3498db',
+                        borderWidth: 0
+                    },
+                    {
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+                        backgroundColor: '#e74c3c',
+                        borderWidth: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(44, 62, 80, 0.9)',
+                        padding: 12,
+                        titleFont: {
+                            size: 14
+                        },
+                        bodyFont: {
+                            size: 13
+                        },
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.y + ' perda(s)';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        },
+                        grid: {
+                            color: '#ecf0f1'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

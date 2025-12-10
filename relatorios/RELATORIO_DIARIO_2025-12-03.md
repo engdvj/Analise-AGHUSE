@@ -9,18 +9,22 @@
 
 ## Desempenho por Horário
 
-| Horário | Latência (ms) | Status |
-|---------|---------------|--------|
-| 21h | 11.0 (11-11) | Bom |
-| 22h | 7.4 (7-9) | Ótimo [2 perda(s)] |
-| 23h | 7.8 (7-8) | Ótimo |
+| Horário | AGHUSE (ms) | Rede Externa (ms) | Status |
+|---------|-------------|-------------------|--------|
+| 21h | 9.0 (9-9) | 45.0 (45-45) | Ótimo |
+| 22h | 7.3 (7-8) | 45.0 (45-45) | Ótimo |
+| 23h | 7.6 (7-9) | 45.0 (45-45) | Ótimo [AG:1pkt, EX:1pkt] |
 
-**Gráfico de Latência:**
+**Gráfico Comparativo de Latência:**
 
 ```
-21h │████████████████████████████████████████ 11.0ms
-22h │███████████████████████████ 7.4ms
-23h │████████████████████████████ 7.8ms
+AGHUSE vs Rede Externa
+21h │AG: ██████ 9.0ms
+     │EX: ██████████████████████████████ 45.0ms
+22h │AG: ████ 7.3ms
+     │EX: ██████████████████████████████ 45.0ms
+23h │AG: █████ 7.6ms
+     │EX: ██████████████████████████████ 45.0ms
 ```
 
 ## Análise Técnica
@@ -43,5 +47,5 @@
 
 **Conexão**: 99.55% - Boa
 
-**Resumo por Horário**: 2/3 ótimo | 1/3 bom
+**Resumo por Horário**: 3/3 ótimo
 

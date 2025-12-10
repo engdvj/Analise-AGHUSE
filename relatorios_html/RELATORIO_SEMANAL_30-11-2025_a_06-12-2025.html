@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório Semanal AGHUSE - 30/11/2025 a 06/12/2025</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+            color: #2c3e50;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px 40px;
+            border-radius: 8px 8px 0 0;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        .header .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px 40px;
+        }
+        .metrics-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        @media (min-width: 1200px) {
+            .metrics-row {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .metrics-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .metrics-row {
+                grid-template-columns: 1fr;
+            }
+        }
+        .metric-card {
+            background: #f8f9fa;
+            padding: 18px;
+            border-radius: 6px;
+            border-left: 4px solid #3498db;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .metric-card.success { border-left-color: #27ae60; }
+        .metric-card.warning { border-left-color: #f39c12; }
+        .metric-card.danger { border-left-color: #e74c3c; }
+        .metric-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #7f8c8d;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .metric-value {
+            font-size: 28px;
+            font-weight: 600;
+            color: #2c3e50;
+            line-height: 1.2;
+        }
+        .metric-unit {
+            font-size: 16px;
+            color: #95a5a6;
+            margin-left: 4px;
+        }
+        .chart-container {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        .chart-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .chart-wrapper {
+            position: relative;
+            height: 350px;
+        }
+        /* Estilos para Abas */
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #dee2e6;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .tab-button {
+            padding: 14px 28px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            color: #7f8c8d;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+        .tab-button:hover {
+            color: #3498db;
+            background: #f8f9fa;
+        }
+        .tab-button.active {
+            color: #3498db;
+            border-bottom-color: #3498db;
+        }
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Estilos para cartões de análise */
+        .analysis-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3498db;
+        }
+        .analysis-card h3 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: #2c3e50;
+        }
+        .analysis-card p {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #5a6c7d;
+        }
+        .anomaly-list {
+            list-style: none;
+            padding: 0;
+        }
+        .anomaly-item {
+            background: white;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            border-left: 3px solid #f39c12;
+        }
+        .anomaly-item.high {
+            border-left-color: #e74c3c;
+        }
+        .anomaly-timestamp {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .anomaly-details {
+            font-size: 13px;
+            color: #7f8c8d;
+            margin-top: 4px;
+        }
+
+        .btn-voltar {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin: 20px 0;
+        }
+
+        .btn-voltar:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-voltar::before {
+            content: '← ';
+        }
+
+        .back-button-container {
+            text-align: center;
+            padding: 20px 40px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Relatório Semanal - Monitoramento AGHUSE</h1>
+            <div class="subtitle">Período: 30/11/2025 a 06/12/2025</div>
+        </div>
+
+        <div class="back-button-container">
+            <a href="../index.html" class="btn-voltar">Voltar para Central de Relatórios</a>
+        </div>
+
+        <div class="content">
+            <div class="metrics-row">
+                <div class="metric-card success">
+                    <div class="metric-label">Disponibilidade</div>
+                    <div class="metric-value">99.41<span class="metric-unit">%</span></div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Latência Média (AGHUSE)</div>
+                    <div class="metric-value">43.2<span class="metric-unit">ms</span></div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Latência Média (Rede Externa)</div>
+                    <div class="metric-value">43.4<span class="metric-unit">ms</span></div>
+                </div>
+                <div class="metric-card warning">
+                    <div class="metric-label">Horários com Perda (AGHUSE)</div>
+                    <div class="metric-value">20</div>
+                    <div class="metric-unit" style="font-size: 14px;">(86pkt perdidos)</div>
+                </div>
+                <div class="metric-card warning">
+                    <div class="metric-label">Horários com Perda (Rede Externa)</div>
+                    <div class="metric-value">14</div>
+                    <div class="metric-unit" style="font-size: 14px;">(53pkt perdidos)</div>
+                </div>
+                <div class="metric-card danger">
+                    <div class="metric-label">Total de Testes</div>
+                    <div class="metric-value">884</div>
+                </div>
+            </div>
+
+            <!-- Sistema de Abas -->
+            <div class="tabs">
+                <button class="tab-button active" data-tab="visao-geral">Visão Geral</button>
+                <button class="tab-button" data-tab="analise-avancada">Análise Avançada</button>
+                <button class="tab-button" data-tab="tendencias">Tendências</button>
+                <button class="tab-button" data-tab="anomalias">Anomalias</button>
+            </div>
+
+            <!-- Aba 1: Visão Geral -->
+            <div class="tab-content active" id="visao-geral">
+                <div class="chart-container">
+                    <div class="chart-title">Evolução da Disponibilidade por Dia</div>
+                    <div class="chart-wrapper">
+                        <canvas id="dispChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Evolução da Latência por Dia - AGHUSE vs Rede Externa</div>
+                    <div class="chart-wrapper">
+                        <canvas id="latDiaChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Latência Média por Horário - AGHUSE vs Rede Externa (Todo o Período)</div>
+                    <div class="chart-wrapper">
+                        <canvas id="latHoraChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Perdas por Horário - AGHUSE vs Rede Externa</div>
+                    <div class="chart-wrapper">
+                        <canvas id="perdasChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aba 2: Análise Avançada -->
+            <div class="tab-content" id="analise-avancada">
+                <div class="chart-container">
+                    <div class="chart-title">Score de Qualidade por Horário - AGHUSE vs Rede Externa (0-10)</div>
+                    <div class="chart-wrapper">
+                        <canvas id="scoresChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Distribuição de Latência - AGHUSE vs Rede Externa</div>
+                    <div class="chart-wrapper">
+                        <canvas id="distribuicaoChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Comparação por Dia da Semana</div>
+                    <div class="chart-wrapper">
+                        <canvas id="diasSemanaChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aba 3: Tendências -->
+            <div class="tab-content" id="tendencias">
+                <div class="analysis-card">
+                    <h3>Análise de Regressão Linear</h3>
+                    <p>
+                        <strong>Tendência:</strong> N/A<br>
+                        <strong>Variação:</strong> 0.00ms/dia<br>
+                        <strong>Confiabilidade (R²):</strong> 0.000<br>
+                        <strong>Previsão 7 dias:</strong> 0.0ms
+                    </p>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Evolução Temporal: Tendência e Previsão</div>
+                    <div class="chart-wrapper">
+                        <canvas id="regressaoChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="analysis-card">
+                    <h3>Horários de Pico Detectados</h3>
+                    <p><strong>Pico Vespertino:</strong> 14h-21h (média 52.6ms)</p>
+                    
+                </div>
+            </div>
+
+            <!-- Aba 4: Anomalias -->
+            <div class="tab-content" id="anomalias">
+                <div class="analysis-card">
+                    <h3>Resumo de Anomalias</h3>
+                    <p><strong>Total de anomalias detectadas:</strong> 2</p>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Top 10 Anomalias Detectadas</div>
+                    <ul class="anomaly-list">
+                        
+                        <li class="anomaly-item ">
+                            <div class="anomaly-timestamp">04/12 às 15:14</div>
+                            <div class="anomaly-details">Latência: 73.0ms - Severidade: MEDIA</div>
+                        </li>
+                        
+                        <li class="anomaly-item ">
+                            <div class="anomaly-timestamp">04/12 às 17:44</div>
+                            <div class="anomaly-details">Latência: 71.0ms - Severidade: MEDIA</div>
+                        </li>
+                        
+                        
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+        Chart.defaults.color = '#7f8c8d';
+
+        // Gráfico de Disponibilidade por Dia
+        new Chart(document.getElementById('dispChart'), {
+            type: 'line',
+            data: {
+                labels: ["03/12/2025", "04/12/2025", "05/12/2025", "06/12/2025"],
+                datasets: [{
+                    label: 'Disponibilidade (%)',
+                    data: [99.55, 99.13, 99.32, 99.77],
+                    borderColor: '#27ae60',
+                    backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: false, min: 98, max: 100 }
+                }
+            }
+        });
+
+        // Gráfico de Latência por Dia
+        new Chart(document.getElementById('latDiaChart'), {
+            type: 'bar',
+            data: {
+                labels: ["03/12/2025", "04/12/2025", "05/12/2025", "06/12/2025"],
+                datasets: [
+                    {
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: [7.8, 29.8, 50.7, 51.7],
+                        backgroundColor: '#3498db',
+                        borderWidth: 0
+                    },
+                    {
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: [45.0, 45.3, 45.7, 38.8],
+                        backgroundColor: '#e74c3c',
+                        borderWidth: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        // Gráfico de Latência por Horário - Comparativo AGHUSE vs Rede Externa
+        new Chart(document.getElementById('latHoraChart'), {
+            type: 'line',
+            data: {
+                labels: ["00h", "01h", "02h", "03h", "04h", "05h", "06h", "07h", "08h", "09h", "10h", "11h", "12h", "13h", "14h", "15h", "16h", "17h", "18h", "19h", "20h", "21h", "22h", "23h"],
+                datasets: [
+                    {
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: [34.2, 36.0, 37.2, 36.2, 35.5, 36.0, 38.9, 36.4, 37.1, 37.6, 45.8, 47.4, 36.2, 38.2, 48.4, 54.9, 55.8, 54.4, 52.1, 52.1, 52.2, 51.1, 41.7, 38.9],
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    },
+                    {
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: [45.1, 45.0, 45.0, 45.0, 45.1, 45.0, 45.2, 45.3, 44.7, 44.9, 43.2, 42.7, 43.1, 43.2, 43.3, 42.7, 44.2, 42.8, 40.7, 40.4, 40.6, 41.1, 41.4, 41.5],
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        // Gráfico de Perdas por Horário - Comparativo AGHUSE vs Rede Externa
+        new Chart(document.getElementById('perdasChart'), {
+            type: 'bar',
+            data: {
+                labels: ["00h", "01h", "02h", "03h", "04h", "05h", "06h", "07h", "08h", "09h", "10h", "11h", "12h", "13h", "14h", "15h", "16h", "17h", "18h", "19h", "20h", "21h", "22h", "23h"],
+                datasets: [
+                    {
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: [1, 2, 1, 0, 0, 3, 1, 2, 9, 6, 8, 14, 6, 9, 4, 5, 3, 4, 2, 0, 0, 1, 3, 2],
+                        backgroundColor: '#3498db',
+                        borderWidth: 0
+                    },
+                    {
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: [0, 0, 0, 0, 0, 0, 1, 1, 4, 3, 3, 0, 1, 6, 1, 5, 5, 1, 0, 1, 0, 19, 0, 2],
+                        backgroundColor: '#e74c3c',
+                        borderWidth: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
+                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+            }
+        });
+
+        // ============================================================
+        // Gráficos das Abas Avançadas
+        // ============================================================
+
+        // Gráfico de Scores de Qualidade
+        new Chart(document.getElementById('scoresChart'), {
+            type: 'bar',
+            data: {
+                labels: ["00h", "01h", "02h", "03h", "04h", "05h", "06h", "07h", "08h", "09h", "10h", "11h", "12h", "13h", "14h", "15h", "16h", "17h", "18h", "19h", "20h", "21h", "22h", "23h"],
+                datasets: [
+                    {
+                        label: 'Score AGHUSE',
+                        data: [4.9, 3.1, 2.7, 4.6, 4.7, 4.7, 2.8, 2.5, 2.1, 2.0, 1.0, 0.9, 2.2, 1.9, 1.8, 0.8, 1.6, 1.4, 1.2, 1.7, 3.2, 4.8, 2.3, 5.8],
+                        backgroundColor: '#FF8C00',
+                        borderWidth: 0
+                    },
+                    {
+                        label: 'Score Rede Externa',
+                        data: [2.4, 2.2, 2.0, 2.2, 2.3, 2.2, 1.8, 2.2, 2.1, 2.0, 1.0, 0.9, 2.2, 1.9, 0.9, 0.7, 0.6, 0.7, 0.8, 0.8, 0.8, 0.8, 1.4, 1.8],
+                        backgroundColor: '#DC143C',
+                        borderWidth: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const score = context.parsed.y;
+                                let classificacao = 'Ruim';
+                                if (score >= 8.5) classificacao = 'Excelente';
+                                else if (score >= 7.0) classificacao = 'Muito Bom';
+                                else if (score >= 5.5) classificacao = 'Bom';
+                                else if (score >= 4.0) classificacao = 'Regular';
+                                return context.dataset.label + ': ' + score.toFixed(1) + ' (' + classificacao + ')';
+                            }
+                        }
+                    }
+                },
+                scales: { y: { beginAtZero: true, max: 10 } }
+            }
+        });
+
+        // Gráfico de Distribuição
+        new Chart(document.getElementById('distribuicaoChart'), {
+            type: 'bar',
+            data: {
+                labels: ["0-20ms", "20-40ms", "40-60ms", "60-80ms", "80+ms"],
+                datasets: [{
+                    label: 'Frequência',
+                    data: [177, 2, 663, 42, 0],
+                    backgroundColor: ['#27ae60', '#3498db', '#f39c12', '#e74c3c', '#95a5a6'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        // Gráfico Comparativo Dias da Semana
+        new Chart(document.getElementById('diasSemanaChart'), {
+            type: 'bar',
+            data: {
+                labels: ["Segunda", "Ter\u00e7a", "Quarta", "Quinta", "Sexta", "S\u00e1bado", "Domingo"],
+                datasets: [{
+                    label: 'Latência Média (ms)',
+                    data: [0, 0, 7.8, 29.8, 50.7, 51.7, 0],
+                    backgroundColor: '#3498db',
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        // Gráfico de Tendências (Evolução Diária com Regressão e Previsão) - AGHUSE vs Rede Externa
+        new Chart(document.getElementById('regressaoChart'), {
+            type: 'line',
+            data: {
+                labels: ["03/12/2025", "04/12/2025", "05/12/2025", "06/12/2025"],
+                datasets: [
+                    {
+                        label: 'AGHUSE - Latência Real',
+                        data: [7.8, 29.8, 50.7, 51.7],
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    },
+                    {
+                        label: 'Linha de Tendência',
+                        data: [null, null, null, null],
+                        borderColor: '#e74c3c',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false,
+                        pointRadius: 0,
+                        tension: 0
+                    },
+                    {
+                        label: 'Previsão (próximos dias)',
+                        data: [null, null, null, 51.7],
+                        borderColor: '#f39c12',
+                        borderWidth: 2,
+                        borderDash: [10, 5],
+                        fill: false,
+                        pointRadius: 4,
+                        tension: 0
+                    },
+                    {
+                        label: 'Baseline Ideal (15ms)',
+                        data: [15.0, 15.0, 15.0, 15.0],
+                        borderColor: '#27ae60',
+                        borderWidth: 2,
+                        borderDash: [2, 2],
+                        fill: false,
+                        pointRadius: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: 'top' }
+                },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        // ============================================================
+        // Sistema de Abas - Troca de Tabs
+        // ============================================================
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const tabId = button.dataset.tab;
+
+                // Remove active de todos
+                document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                // Ativa o selecionado
+                button.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

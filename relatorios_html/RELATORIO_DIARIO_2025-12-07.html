@@ -51,9 +51,27 @@
 
         .metrics-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
             margin-bottom: 30px;
+        }
+
+        @media (min-width: 1200px) {
+            .metrics-row {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .metrics-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .metrics-row {
+                grid-template-columns: 1fr;
+            }
         }
 
         .metric-card {
@@ -237,6 +255,34 @@
                 height: 250px;
             }
         }
+
+        .btn-voltar {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin: 20px 0;
+        }
+
+        .btn-voltar:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-voltar::before {
+            content: '← ';
+        }
+
+        .back-button-container {
+            text-align: center;
+            padding: 20px 40px 0;
+        }
     </style>
 </head>
 <body>
@@ -244,6 +290,10 @@
         <div class="header">
             <h1>Relatório de Conectividade AGHUSE</h1>
             <div class="subtitle">Análise do dia 07/12/2025</div>
+        </div>
+
+        <div class="back-button-container">
+            <a href="../index.html" class="btn-voltar">Voltar para Central de Relatórios</a>
         </div>
 
         <div class="content">
@@ -255,15 +305,27 @@
                 </div>
 
                 <div class="metric-card primary">
-                    <div class="metric-label">Latência Média</div>
-                    <div class="metric-value">53.9<span class="metric-unit">ms</span></div>
-                    <div class="metric-status">Máxima: 58.2ms</div>
+                    <div class="metric-label">Latência Média (AGHUSE)</div>
+                    <div class="metric-value">53.8<span class="metric-unit">ms</span></div>
+                    <div class="metric-status">Máxima: 57.8ms</div>
+                </div>
+
+                <div class="metric-card primary">
+                    <div class="metric-label">Latência Média (Rede Externa)</div>
+                    <div class="metric-value">35.0<span class="metric-unit">ms</span></div>
+                    <div class="metric-status">Máxima: 39.4ms</div>
                 </div>
 
                 <div class="metric-card warning">
-                    <div class="metric-label">Horários com Perda</div>
+                    <div class="metric-label">Horários com Perda (AGHUSE)</div>
                     <div class="metric-value">11</div>
-                    <div class="metric-status">Total de 11 perda(s)</div>
+                    <div class="metric-status">Total de 14pkt perdidos</div>
+                </div>
+
+                <div class="metric-card warning">
+                    <div class="metric-label">Horários com Perda (Rede Externa)</div>
+                    <div class="metric-value">7</div>
+                    <div class="metric-status">Total de 8pkt perdidos</div>
                 </div>
 
                 <div class="metric-card danger">
@@ -275,14 +337,14 @@
 
             <div class="charts-section">
                 <div class="chart-container">
-                    <div class="chart-title">Latência por Horário</div>
+                    <div class="chart-title">Latência por Horário - AGHUSE vs Rede Externa</div>
                     <div class="chart-wrapper large">
                         <canvas id="latencyChart"></canvas>
                     </div>
                 </div>
 
                 <div class="chart-container">
-                    <div class="chart-title">Perdas de Conexão por Horário</div>
+                    <div class="chart-title">Perdas de Conexão por Horário - AGHUSE vs Rede Externa</div>
                     <div class="chart-wrapper">
                         <canvas id="lossChart"></canvas>
                     </div>
@@ -290,213 +352,429 @@
             </div>
 
             <div class="table-section">
-                <div class="section-title">Desempenho Detalhado por Horário</div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Horário</th>
-                            <th>Latência Média</th>
-                            <th>Mín - Máx</th>
-                            <th>Status</th>
-                            <th>Perdas</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                <div class="section-title">Desempenho Detalhado por Horário - AGHUSE vs Rede Externa</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <!-- Tabela AGHUSE -->
+                    <div>
+                        <h3 style="color: #3498db; font-size: 16px; margin-bottom: 10px; text-align: center;">AGHUSE (10.252.17.132)</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Horário</th>
+                                    <th>Latência Média</th>
+                                    <th>Mín - Máx</th>
+                                    <th>Status</th>
+                                    <th>Perdas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
 
-                        <tr>
-                            <td>00h</td>
-                            <td>54.5 ms</td>
-                            <td>54 - 55 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td>0</td>
-                        </tr>
+                                <tr>
+                                    <td>00h</td>
+                                    <td>54.4 ms</td>
+                                    <td>54 - 57 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
 
-                        <tr>
-                            <td>01h</td>
-                            <td>54.5 ms</td>
-                            <td>54 - 56 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td>0</td>
-                        </tr>
+                                <tr>
+                                    <td>01h</td>
+                                    <td>54.2 ms</td>
+                                    <td>54 - 55 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
 
-                        <tr>
-                            <td>02h</td>
-                            <td>54.7 ms</td>
-                            <td>54 - 55 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td>0</td>
-                        </tr>
+                                <tr>
+                                    <td>02h</td>
+                                    <td>54.7 ms</td>
+                                    <td>54 - 55 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
 
-                        <tr>
-                            <td>03h</td>
-                            <td>54.2 ms</td>
-                            <td>54 - 56 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td>0</td>
-                        </tr>
+                                <tr>
+                                    <td>03h</td>
+                                    <td>54.5 ms</td>
+                                    <td>54 - 56 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
 
-                        <tr>
-                            <td>04h</td>
-                            <td>54.2 ms</td>
-                            <td>54 - 55 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td>0</td>
-                        </tr>
+                                <tr>
+                                    <td>04h</td>
+                                    <td>54.2 ms</td>
+                                    <td>54 - 56 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
 
-                        <tr>
-                            <td>05h</td>
-                            <td>54.4 ms</td>
-                            <td>54 - 56 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td>0</td>
-                        </tr>
+                                <tr>
+                                    <td>05h</td>
+                                    <td>54.1 ms</td>
+                                    <td>54 - 55 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
 
-                        <tr>
-                            <td>06h</td>
-                            <td>54.2 ms</td>
-                            <td>54 - 55 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td><span class="perda-indicator">1</span></td>
-                        </tr>
+                                <tr>
+                                    <td>06h</td>
+                                    <td>54.2 ms</td>
+                                    <td>54 - 55 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
 
-                        <tr>
-                            <td>07h</td>
-                            <td>54.1 ms</td>
-                            <td>54 - 55 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td>0</td>
-                        </tr>
+                                <tr>
+                                    <td>07h</td>
+                                    <td>54.3 ms</td>
+                                    <td>54 - 56 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
 
-                        <tr>
-                            <td>08h</td>
-                            <td>54.3 ms</td>
-                            <td>54 - 56 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td>0</td>
-                        </tr>
+                                <tr>
+                                    <td>08h</td>
+                                    <td>54.1 ms</td>
+                                    <td>54 - 55 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
 
-                        <tr>
-                            <td>09h</td>
-                            <td>54.3 ms</td>
-                            <td>54 - 56 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td><span class="perda-indicator">1</span></td>
-                        </tr>
+                                <tr>
+                                    <td>09h</td>
+                                    <td>54.3 ms</td>
+                                    <td>54 - 55 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
 
-                        <tr>
-                            <td>10h</td>
-                            <td>54.8 ms</td>
-                            <td>54 - 56 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td><span class="perda-indicator">2</span></td>
-                        </tr>
+                                <tr>
+                                    <td>10h</td>
+                                    <td>54.5 ms</td>
+                                    <td>54 - 56 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
 
-                        <tr>
-                            <td>11h</td>
-                            <td>54.6 ms</td>
-                            <td>54 - 56 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td><span class="perda-indicator">1</span></td>
-                        </tr>
+                                <tr>
+                                    <td>11h</td>
+                                    <td>54.2 ms</td>
+                                    <td>54 - 55 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
 
-                        <tr>
-                            <td>12h</td>
-                            <td>55.2 ms</td>
-                            <td>54 - 60 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td><span class="perda-indicator">1</span></td>
-                        </tr>
+                                <tr>
+                                    <td>12h</td>
+                                    <td>54.4 ms</td>
+                                    <td>54 - 56 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
 
-                        <tr>
-                            <td>13h</td>
-                            <td>54.5 ms</td>
-                            <td>54 - 55 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td><span class="perda-indicator">1</span></td>
-                        </tr>
+                                <tr>
+                                    <td>13h</td>
+                                    <td>54.3 ms</td>
+                                    <td>54 - 55 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">2</span></td>
+                                </tr>
 
-                        <tr>
-                            <td>14h</td>
-                            <td>52.8 ms</td>
-                            <td>48 - 55 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td>0</td>
-                        </tr>
+                                <tr>
+                                    <td>14h</td>
+                                    <td>52.7 ms</td>
+                                    <td>48 - 55 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
 
-                        <tr>
-                            <td>15h</td>
-                            <td>48.4 ms</td>
-                            <td>48 - 49 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td><span class="perda-indicator">1</span></td>
-                        </tr>
+                                <tr>
+                                    <td>15h</td>
+                                    <td>48.2 ms</td>
+                                    <td>48 - 49 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">3</span></td>
+                                </tr>
 
-                        <tr>
-                            <td>16h</td>
-                            <td>48.4 ms</td>
-                            <td>48 - 50 ms</td>
-                            <td><span class="status-badge status-bom">Bom</span></td>
-                            <td>0</td>
-                        </tr>
+                                <tr>
+                                    <td>16h</td>
+                                    <td>48.5 ms</td>
+                                    <td>48 - 50 ms</td>
+                                    <td><span class="status-badge status-bom">Bom</span></td>
+                                    <td>0</td>
+                                </tr>
 
-                        <tr>
-                            <td>17h</td>
-                            <td>48.6 ms</td>
-                            <td>48 - 50 ms</td>
-                            <td><span class="status-badge status-bom">Bom</span></td>
-                            <td>0</td>
-                        </tr>
+                                <tr>
+                                    <td>17h</td>
+                                    <td>48.3 ms</td>
+                                    <td>48 - 49 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
 
-                        <tr>
-                            <td>18h</td>
-                            <td>54.5 ms</td>
-                            <td>48 - 58 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td><span class="perda-indicator">1</span></td>
-                        </tr>
+                                <tr>
+                                    <td>18h</td>
+                                    <td>54.6 ms</td>
+                                    <td>48 - 59 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
 
-                        <tr>
-                            <td>19h</td>
-                            <td>58.0 ms</td>
-                            <td>57 - 59 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td><span class="perda-indicator">1</span></td>
-                        </tr>
+                                <tr>
+                                    <td>19h</td>
+                                    <td>57.8 ms</td>
+                                    <td>57 - 58 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
 
-                        <tr>
-                            <td>20h</td>
-                            <td>58.1 ms</td>
-                            <td>58 - 59 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td><span class="perda-indicator">1</span></td>
-                        </tr>
+                                <tr>
+                                    <td>20h</td>
+                                    <td>57.8 ms</td>
+                                    <td>57 - 58 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
 
-                        <tr>
-                            <td>21h</td>
-                            <td>58.2 ms</td>
-                            <td>57 - 62 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td>0</td>
-                        </tr>
+                                <tr>
+                                    <td>21h</td>
+                                    <td>57.8 ms</td>
+                                    <td>57 - 59 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
 
-                        <tr>
-                            <td>22h</td>
-                            <td>55.6 ms</td>
-                            <td>49 - 58 ms</td>
-                            <td><span class="status-badge status-regular">Regular</span></td>
-                            <td>0</td>
-                        </tr>
+                                <tr>
+                                    <td>22h</td>
+                                    <td>55.4 ms</td>
+                                    <td>49 - 58 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
 
-                        <tr>
-                            <td>23h</td>
-                            <td>49.2 ms</td>
-                            <td>49 - 50 ms</td>
-                            <td><span class="status-badge status-bom">Bom</span></td>
-                            <td>0</td>
-                        </tr>
+                                <tr>
+                                    <td>23h</td>
+                                    <td>49.0 ms</td>
+                                    <td>49 - 49 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
 
-                    </tbody>
-                </table>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Tabela Rede Externa -->
+                    <div>
+                        <h3 style="color: #e74c3c; font-size: 16px; margin-bottom: 10px; text-align: center;">Rede Externa (8.8.8.8)</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Horário</th>
+                                    <th>Latência Média</th>
+                                    <th>Mín - Máx</th>
+                                    <th>Status</th>
+                                    <th>Perdas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                                <tr>
+                                    <td>00h</td>
+                                    <td>31.4 ms</td>
+                                    <td>30 - 37 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>01h</td>
+                                    <td>30.8 ms</td>
+                                    <td>30 - 32 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>02h</td>
+                                    <td>30.7 ms</td>
+                                    <td>30 - 31 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>03h</td>
+                                    <td>30.8 ms</td>
+                                    <td>30 - 31 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
+
+                                <tr>
+                                    <td>04h</td>
+                                    <td>30.6 ms</td>
+                                    <td>30 - 31 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>05h</td>
+                                    <td>30.8 ms</td>
+                                    <td>30 - 31 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>06h</td>
+                                    <td>30.8 ms</td>
+                                    <td>30 - 32 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
+
+                                <tr>
+                                    <td>07h</td>
+                                    <td>31.6 ms</td>
+                                    <td>30 - 40 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>08h</td>
+                                    <td>38.7 ms</td>
+                                    <td>38 - 45 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
+
+                                <tr>
+                                    <td>09h</td>
+                                    <td>38.6 ms</td>
+                                    <td>38 - 40 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
+
+                                <tr>
+                                    <td>10h</td>
+                                    <td>38.4 ms</td>
+                                    <td>38 - 39 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>11h</td>
+                                    <td>38.6 ms</td>
+                                    <td>38 - 40 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>12h</td>
+                                    <td>38.3 ms</td>
+                                    <td>38 - 39 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
+
+                                <tr>
+                                    <td>13h</td>
+                                    <td>38.6 ms</td>
+                                    <td>38 - 42 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">2</span></td>
+                                </tr>
+
+                                <tr>
+                                    <td>14h</td>
+                                    <td>38.4 ms</td>
+                                    <td>38 - 39 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
+
+                                <tr>
+                                    <td>15h</td>
+                                    <td>38.9 ms</td>
+                                    <td>38 - 40 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>16h</td>
+                                    <td>39.4 ms</td>
+                                    <td>38 - 40 ms</td>
+                                    <td><span class="status-badge status-bom">Bom</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>17h</td>
+                                    <td>39.3 ms</td>
+                                    <td>38 - 43 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>18h</td>
+                                    <td>35.8 ms</td>
+                                    <td>33 - 42 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>19h</td>
+                                    <td>34.1 ms</td>
+                                    <td>33 - 35 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>20h</td>
+                                    <td>33.8 ms</td>
+                                    <td>33 - 34 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>21h</td>
+                                    <td>34.0 ms</td>
+                                    <td>33 - 35 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>22h</td>
+                                    <td>33.8 ms</td>
+                                    <td>33 - 34 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>23h</td>
+                                    <td>33.4 ms</td>
+                                    <td>33 - 34 ms</td>
+                                    <td><span class="status-badge status-regular">Regular</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -505,30 +783,44 @@
         Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
         Chart.defaults.color = '#7f8c8d';
 
-        // Gráfico de Latência
+        // Gráfico de Latência - Comparativo AGHUSE vs Rede Externa
         const latencyCtx = document.getElementById('latencyChart').getContext('2d');
         new Chart(latencyCtx, {
             type: 'line',
             data: {
                 labels: ["0h", "1h", "2h", "3h", "4h", "5h", "6h", "7h", "8h", "9h", "10h", "11h", "12h", "13h", "14h", "15h", "16h", "17h", "18h", "19h", "20h", "21h", "22h", "23h"],
-                datasets: [{
-                    label: 'Latência (ms)',
-                    data: [54.5, 54.5, 54.7, 54.2, 54.2, 54.4, 54.2, 54.1, 54.3, 54.3, 54.8, 54.6, 55.2, 54.5, 52.8, 48.4, 48.4, 48.6, 54.5, 58.0, 58.1, 58.2, 55.6, 49.2],
-                    borderColor: '#3498db',
-                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.3,
-                    pointRadius: 3,
-                    pointHoverRadius: 5
-                }]
+                datasets: [
+                    {
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: [54.4, 54.2, 54.7, 54.5, 54.2, 54.1, 54.2, 54.3, 54.1, 54.3, 54.5, 54.2, 54.4, 54.3, 52.7, 48.2, 48.5, 48.3, 54.6, 57.8, 57.8, 57.8, 55.4, 49.0],
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    },
+                    {
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: [31.4, 30.8, 30.7, 30.8, 30.6, 30.8, 30.8, 31.6, 38.7, 38.6, 38.4, 38.6, 38.3, 38.6, 38.4, 38.9, 39.4, 39.3, 35.8, 34.1, 33.8, 34.0, 33.8, 33.4],
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        display: false
+                        display: true,
+                        position: 'top'
                     },
                     tooltip: {
                         backgroundColor: 'rgba(44, 62, 80, 0.9)',
@@ -562,30 +854,34 @@
             }
         });
 
-        // Gráfico de Perdas
+        // Gráfico de Perdas - Comparativo AGHUSE vs Rede Externa
         const lossCtx = document.getElementById('lossChart').getContext('2d');
         new Chart(lossCtx, {
             type: 'bar',
             data: {
                 labels: ["0h", "1h", "2h", "3h", "4h", "5h", "6h", "7h", "8h", "9h", "10h", "11h", "12h", "13h", "14h", "15h", "16h", "17h", "18h", "19h", "20h", "21h", "22h", "23h"],
-                datasets: [{
-                    label: 'Perdas',
-                    data: [0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 2, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0],
-                    backgroundColor: function(context) {
-                        const value = context.parsed.y;
-                        if (value === 0) return '#95a5a6';
-                        if (value <= 2) return '#f39c12';
-                        return '#e74c3c';
+                datasets: [
+                    {
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: [0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 2, 0, 3, 0, 1, 0, 1, 0, 0, 0, 1],
+                        backgroundColor: '#3498db',
+                        borderWidth: 0
                     },
-                    borderWidth: 0
-                }]
+                    {
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: [0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        backgroundColor: '#e74c3c',
+                        borderWidth: 0
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        display: false
+                        display: true,
+                        position: 'top'
                     },
                     tooltip: {
                         backgroundColor: 'rgba(44, 62, 80, 0.9)',

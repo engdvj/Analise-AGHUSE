@@ -15,7 +15,7 @@ LATENCIA_REGULAR = 50    # ms - atenção
 
 # Detecção de Horários de Pico
 THRESHOLD_PICO = 1.10    # 10% acima da média geral = pico
-MIN_DURACAO_PICO = 3     # Mínimo 3 horas consecutivas para ser considerado pico
+MIN_DURACAO_PICO = 2     # Mínimo 2 horas consecutivas para ser considerado pico
 
 # Detecção de Anomalias
 DESVIO_ANOMALIA = 2.5    # 2.5 desvios padrão = anomalia
@@ -90,13 +90,39 @@ def extrair_dados_teste(conteudo):
     if match:
         dados['ping_externo']['perda'] = int(match.group(2))
 
-    # Contar saltos do tracert
+    # Contar saltos do tracert e extrair rotas
     tracert_section = re.search(r'\[4/7\] TRACERT.*?Rastreamento conclu.do', conteudo, re.DOTALL)
     if tracert_section:
         saltos = len(re.findall(r'^\s*\d+\s+', tracert_section.group(0), re.MULTILINE))
         dados['tracert_saltos'] = saltos
 
+        # Extrair rotas completas do tracert
+        dados['tracert_rota'] = extrair_rotas_tracert(tracert_section.group(0))
+
     return dados
+
+def extrair_rotas_tracert(tracert_text):
+    """
+    Extrai a rota completa do tracert (sequência de IPs)
+
+    Args:
+        tracert_text: texto da seção do tracert
+
+    Returns:
+        tuple: (rota_hash, lista_ips) onde rota_hash é uma string única identificadora da rota
+    """
+    ips = []
+
+    # Extrair IPs de cada salto (formato: "  1    <1 ms    <1 ms    <1 ms  10.17.201.254")
+    linhas = re.findall(r'^\s*\d+\s+.*?\s+([\d\.]+)\s*$', tracert_text, re.MULTILINE)
+
+    for ip in linhas:
+        ips.append(ip)
+
+    # Criar hash da rota (sequência de IPs separados por ->)
+    rota_hash = ' -> '.join(ips) if ips else None
+
+    return {'hash': rota_hash, 'ips': ips, 'num_saltos': len(ips)}
 
 def processar_todos_arquivos(pasta):
     """Processa todos os arquivos de teste na pasta e subpastas"""
@@ -232,35 +258,67 @@ def analisar_horarios_problematicos(dados_por_dia):
     return dict(horarios_problemas), dict(horarios_latencia_alta)
 
 def analisar_latencia_por_horario(dados_lista):
-    """Analisa latência média por faixa horária"""
-    latencia_por_hora = defaultdict(list)
-    perda_por_hora = defaultdict(list)
+    """Analisa latência média por faixa horária - AGHUSE e Rede Externa"""
+    latencia_aghuse_por_hora = defaultdict(list)
+    latencia_externo_por_hora = defaultdict(list)
+    perda_aghuse_por_hora = defaultdict(list)
+    perda_externo_por_hora = defaultdict(list)
 
     for d in dados_lista:
         hora_int = int(d['hora'].split(':')[0])
 
-        if d['ping_aghuse']['media']:
-            latencia_por_hora[hora_int].append(d['ping_aghuse']['media'])
+        # Coletar latência AGHUSE (10.252.17.132)
+        if d['ping_interno']['media']:
+            latencia_aghuse_por_hora[hora_int].append(d['ping_interno']['media'])
 
-        if d['ping_aghuse']['perda'] is not None:
-            perda_por_hora[hora_int].append(d['ping_aghuse']['perda'])
+        # Coletar latência Rede Externa (8.8.8.8)
+        if d['ping_externo']['media']:
+            latencia_externo_por_hora[hora_int].append(d['ping_externo']['media'])
+
+        # Coletar perdas AGHUSE
+        if d['ping_interno']['perda'] is not None:
+            perda_aghuse_por_hora[hora_int].append(d['ping_interno']['perda'])
+
+        # Coletar perdas Rede Externa
+        if d['ping_externo']['perda'] is not None:
+            perda_externo_por_hora[hora_int].append(d['ping_externo']['perda'])
 
     # Calcular estatísticas por hora
     stats_por_hora = {}
-    for hora in latencia_por_hora.keys():
-        latencias = latencia_por_hora[hora]
-        perdas = perda_por_hora.get(hora, [])
+    for hora in latencia_aghuse_por_hora.keys():
+        latencias_aghuse = latencia_aghuse_por_hora[hora]
+        latencias_externo = latencia_externo_por_hora.get(hora, [])
+        perdas_aghuse = perda_aghuse_por_hora.get(hora, [])
+        perdas_externo = perda_externo_por_hora.get(hora, [])
 
-        testes_com_perda = sum(1 for p in perdas if p > 0)
+        testes_com_perda_aghuse = sum(1 for p in perdas_aghuse if p > 0)
+        testes_com_perda_externo = sum(1 for p in perdas_externo if p > 0)
+
+        # Calcular total de pacotes perdidos (cada teste envia 20 pacotes)
+        perda_percentual_total_aghuse = sum(perdas_aghuse)
+        perda_percentual_total_externo = sum(perdas_externo) if perdas_externo else 0
+
+        # Converter porcentagem em número de pacotes
+        # Se temos N testes com perda total de X%, então perdemos (X/100) * 20 pacotes por teste em média
+        pacotes_perdidos_aghuse = int((perda_percentual_total_aghuse / 100) * 20) if perdas_aghuse else 0
+        pacotes_perdidos_externo = int((perda_percentual_total_externo / 100) * 20) if perdas_externo else 0
 
         stats_por_hora[hora] = {
-            'media': sum(latencias) / len(latencias),
-            'min': min(latencias),
-            'max': max(latencias),
-            'testes': len(latencias),
-            'total_testes': len(latencias),  # Adicionar para compatibilidade
-            'testes_com_perda': testes_com_perda,
-            'perda_total': sum(perdas)
+            'media': sum(latencias_aghuse) / len(latencias_aghuse),
+            'min': min(latencias_aghuse),
+            'max': max(latencias_aghuse),
+            'testes': len(latencias_aghuse),
+            'total_testes': len(latencias_aghuse),
+            'testes_com_perda': testes_com_perda_aghuse,
+            'perda_total': sum(perdas_aghuse),
+            'pacotes_perdidos': pacotes_perdidos_aghuse,
+            # Dados da rede externa
+            'media_externo': sum(latencias_externo) / len(latencias_externo) if latencias_externo else 0,
+            'min_externo': min(latencias_externo) if latencias_externo else 0,
+            'max_externo': max(latencias_externo) if latencias_externo else 0,
+            'testes_com_perda_externo': testes_com_perda_externo,
+            'perda_total_externo': sum(perdas_externo) if perdas_externo else 0,
+            'pacotes_perdidos_externo': pacotes_perdidos_externo
         }
 
     return stats_por_hora
@@ -371,37 +429,50 @@ def gerar_analise_qualidade_horaria(stats_latencia_hora, titulo="**Resumo por Ho
     return ''.join(md)
 
 def gerar_tabela_latencia_horaria(stats_latencia_hora, incluir_grafico=True):
-    """Gera tabela de latência por faixa horária com gráfico opcional"""
+    """Gera tabela de latência por faixa horária com comparativo AGHUSE vs Rede Externa"""
     if not stats_latencia_hora:
         return "*Nenhum dado disponível.*\n\n"
 
     md = []
 
-    # Tabela simplificada - apenas o essencial
-    md.append("| Horário | Latência (ms) | Status |\n")
-    md.append("|---------|---------------|--------|\n")
+    # Tabela com comparativo AGHUSE vs Rede Externa
+    md.append("| Horário | AGHUSE (ms) | Rede Externa (ms) | Status |\n")
+    md.append("|---------|-------------|-------------------|--------|\n")
 
     for hora in sorted(stats_latencia_hora.keys()):
         s = stats_latencia_hora[hora]
         classificacao, _ = classificar_faixa_horaria(s)
 
-        # Adicionar alerta se tiver perda
+        # Adicionar alertas de perda para AGHUSE e Rede Externa
+        alertas = []
         if s['testes_com_perda'] > 0:
-            alerta = f" [{s['testes_com_perda']} perda(s)]"
-        else:
-            alerta = ""
+            alertas.append(f"AG:{s.get('pacotes_perdidos', 0)}pkt")
+        if s.get('testes_com_perda_externo', 0) > 0:
+            alertas.append(f"EX:{s.get('pacotes_perdidos_externo', 0)}pkt")
 
-        md.append(f"| {hora:02d}h | {s['media']:.1f} ({s['min']}-{s['max']}) | {classificacao}{alerta} |\n")
+        alerta = f" [{', '.join(alertas)}]" if alertas else ""
+
+        # Formatar dados AGHUSE e Rede Externa
+        aghuse_str = f"{s['media']:.1f} ({s['min']}-{s['max']})"
+        externo_str = f"{s['media_externo']:.1f} ({s['min_externo']}-{s['max_externo']})" if s.get('media_externo', 0) > 0 else "N/A"
+
+        md.append(f"| {hora:02d}h | {aghuse_str} | {externo_str} | {classificacao}{alerta} |\n")
 
     md.append("\n")
 
     if incluir_grafico:
-        md.append("**Gráfico de Latência:**\n\n")
+        md.append("**Gráfico Comparativo de Latência:**\n\n")
         md.append("```\n")
-        valores_latencia = {hora: s['media'] for hora, s in stats_latencia_hora.items()}
-        grafico_linhas = gerar_grafico_barras_ascii(valores_latencia)
-        for linha in grafico_linhas:
-            md.append(linha + "\n")
+        md.append("AGHUSE vs Rede Externa\n")
+        for hora in sorted(stats_latencia_hora.keys()):
+            s = stats_latencia_hora[hora]
+            # Escala para visualização
+            max_val = max(s['media'], s.get('media_externo', 0))
+            if max_val > 0:
+                barra_aghuse = '█' * int((s['media'] / max_val) * 30)
+                barra_externo = '█' * int((s.get('media_externo', 0) / max_val) * 30) if s.get('media_externo', 0) > 0 else ''
+                md.append(f"{hora:02d}h │AG: {barra_aghuse} {s['media']:.1f}ms\n")
+                md.append(f"     │EX: {barra_externo} {s.get('media_externo', 0):.1f}ms\n")
         md.append("```\n\n")
 
     return ''.join(md)
@@ -637,12 +708,13 @@ def gerar_comparacao_3_endpoints(comparacao):
 # FUNÇÕES DE ANÁLISE AVANÇADA
 # ============================================================================
 
-def calcular_regressao_linear(dados_lista):
+def calcular_regressao_linear(dados_lista, usar_externo=False):
     """
     Calcula regressão linear y = ax + b para tendências de latência
 
     Args:
-        dados_lista: Lista de dicionários com dados de testes contendo 'datetime' e 'ping_aghuse'
+        dados_lista: Lista de dicionários com dados de testes contendo 'datetime' e 'ping_interno'/'ping_externo'
+        usar_externo: Se True, usa ping_externo (8.8.8.8), senão usa ping_interno (10.252.17.132)
 
     Returns:
         dict: {'slope', 'intercept', 'r_squared', 'previsao_7d', 'tendencia'}
@@ -656,10 +728,11 @@ def calcular_regressao_linear(dados_lista):
             'tendencia': 'indisponível'
         }
 
-    # Filtrar dados válidos
-    dados_validos = [(d['datetime'], d['ping_aghuse']['media'])
+    # Filtrar dados válidos - usar ping_interno (AGHUSE) ou ping_externo
+    campo_ping = 'ping_externo' if usar_externo else 'ping_interno'
+    dados_validos = [(d['datetime'], d[campo_ping]['media'])
                      for d in dados_lista
-                     if d.get('datetime') and d.get('ping_aghuse', {}).get('media') is not None]
+                     if d.get('datetime') and d.get(campo_ping, {}).get('media') is not None]
 
     if len(dados_validos) < 2:
         return {
@@ -962,6 +1035,111 @@ def detectar_anomalias(dados_lista, latencia_por_hora, desvio_threshold=None, pe
     return sorted(anomalias, key=lambda x: x['timestamp'])
 
 
+def analisar_rotas_tracert(dados_lista):
+    """
+    Analisa padrões de rotas do tracert e correlaciona com perda de pacotes
+
+    Args:
+        dados_lista: Lista de dados de testes
+
+    Returns:
+        dict: {
+            'rotas_unicas': {rota_hash: {'count': int, 'com_perda': int, 'sem_perda': int, 'exemplos': [dados]}},
+            'mudancas_rota': [{'timestamp', 'rota_anterior', 'rota_nova', 'teve_perda'}],
+            'correlacao': {'texto': str, 'percentual_perda_rota_alternativa': float}
+        }
+    """
+    from collections import defaultdict
+
+    # Identificar todas as rotas únicas
+    rotas_unicas = defaultdict(lambda: {'count': 0, 'com_perda': 0, 'sem_perda': 0, 'exemplos': []})
+
+    # Rastrear mudanças de rota
+    mudancas_rota = []
+    rota_anterior = None
+
+    # Agrupar testes por rota
+    for dado in dados_lista:
+        if not dado.get('tracert_rota') or not dado.get('tracert_rota', {}).get('hash'):
+            continue
+
+        rota_hash = dado['tracert_rota']['hash']
+        perda_valor = dado.get('ping_interno', {}).get('perda')
+        tem_perda = perda_valor is not None and perda_valor > 0
+
+        # Contar ocorrências
+        rotas_unicas[rota_hash]['count'] += 1
+
+        if tem_perda:
+            rotas_unicas[rota_hash]['com_perda'] += 1
+        else:
+            rotas_unicas[rota_hash]['sem_perda'] += 1
+
+        # Guardar exemplo
+        if len(rotas_unicas[rota_hash]['exemplos']) < 3:
+            rotas_unicas[rota_hash]['exemplos'].append({
+                'timestamp': dado.get('datetime'),
+                'perda': dado.get('ping_interno', {}).get('perda', 0),
+                'latencia': dado.get('ping_interno', {}).get('media', 0)
+            })
+
+        # Detectar mudanças de rota
+        if rota_anterior is not None and rota_anterior != rota_hash:
+            mudancas_rota.append({
+                'timestamp': dado.get('datetime'),
+                'rota_anterior': rota_anterior,
+                'rota_nova': rota_hash,
+                'teve_perda': tem_perda
+            })
+
+        rota_anterior = rota_hash
+
+    # Calcular correlação
+    total_testes = sum(r['count'] for r in rotas_unicas.values())
+    rota_principal = max(rotas_unicas.items(), key=lambda x: x[1]['count']) if rotas_unicas else None
+
+    correlacao = {'texto': '', 'percentual_perda_rota_alternativa': 0}
+
+    if rota_principal and len(rotas_unicas) > 1:
+        rota_principal_hash, rota_principal_stats = rota_principal
+
+        # Calcular percentual de perda na rota principal
+        perda_principal = (rota_principal_stats['com_perda'] / rota_principal_stats['count'] * 100) if rota_principal_stats['count'] > 0 else 0
+
+        # Calcular percentual de perda em rotas alternativas
+        rotas_alternativas = {k: v for k, v in rotas_unicas.items() if k != rota_principal_hash}
+        testes_alternativos = sum(r['count'] for r in rotas_alternativas.values())
+        perdas_alternativas = sum(r['com_perda'] for r in rotas_alternativas.values())
+        perda_alternativas = (perdas_alternativas / testes_alternativos * 100) if testes_alternativos > 0 else 0
+
+        correlacao['percentual_perda_rota_principal'] = round(perda_principal, 2)
+        correlacao['percentual_perda_rota_alternativa'] = round(perda_alternativas, 2)
+        correlacao['mudancas_com_perda'] = sum(1 for m in mudancas_rota if m['teve_perda'])
+        correlacao['total_mudancas'] = len(mudancas_rota)
+
+        # Análise textual
+        if perda_alternativas > perda_principal * 1.5:
+            correlacao['texto'] = f"Rotas alternativas apresentam {perda_alternativas:.1f}% de perda vs {perda_principal:.1f}% na rota principal. Possível instabilidade em rotas alternativas."
+        elif len(mudancas_rota) > 0:
+            pct_mudancas_com_perda = (correlacao['mudancas_com_perda'] / len(mudancas_rota) * 100)
+            correlacao['texto'] = f"Detectadas {len(mudancas_rota)} mudanças de rota, sendo {pct_mudancas_com_perda:.0f}% associadas a perda de pacotes."
+        else:
+            correlacao['texto'] = "Rota estável durante todo o período analisado."
+
+    elif rota_principal:
+        # Apenas uma rota detectada
+        correlacao['texto'] = "Rota única estável durante todo o período. Sem mudanças de caminho detectadas."
+    else:
+        correlacao['texto'] = "Dados de tracert insuficientes para análise."
+
+    return {
+        'rotas_unicas': dict(rotas_unicas),
+        'mudancas_rota': mudancas_rota,
+        'correlacao': correlacao,
+        'rota_principal': rota_principal[0] if rota_principal else None
+    }
+
+
 def analisar_dia_semana(dados_lista):
     """
     Agrupa dados por dia da semana e compara padrões
@@ -1170,27 +1348,60 @@ def gerar_relatorio_diario(dia, dados_dia, stats):
 
     return ''.join(md)
 
-def gerar_relatorio_semanal(dados_por_dia):
-    """Gera relatório semanal consolidado"""
+def gerar_relatorio_semanal(dados_por_dia, domingo=None, sabado=None):
+    """Gera relatório semanal consolidado
+
+    Args:
+        dados_por_dia: Dicionário com dados por dia
+        domingo: Data do domingo (início da semana). Se None, usa semana atual
+        sabado: Data do sábado (fim da semana). Se None, calcula a partir do domingo
+    """
     md = []
 
-    # Validar se há dados
-    if not dados_por_dia:
-        md.append("# Relatório Semanal - Monitoramento de Conectividade AGHUSE\n\n")
-        md.append("**Aviso**: Nenhum dado disponível para gerar o relatório.\n")
-        return ''.join(md)
+    # Se domingo não foi fornecido, calcular semana atual
+    if domingo is None:
+        hoje = datetime.now().date()
+        dias_desde_domingo = (hoje.weekday() + 1) % 7
+        domingo = hoje - timedelta(days=dias_desde_domingo)
 
-    dias_ordenados = sorted(dados_por_dia.keys())
-    primeira_data = dias_ordenados[0].strftime("%d/%m/%Y")
-    ultima_data = dias_ordenados[-1].strftime("%d/%m/%Y")
+    # Se sábado não foi fornecido, calcular a partir do domingo
+    if sabado is None:
+        sabado = domingo + timedelta(days=6)
+
+    # Gerar lista dos 7 dias da semana (domingo a sábado)
+    dias_da_semana = [domingo + timedelta(days=i) for i in range(7)]
+
+    primeira_data = domingo.strftime("%d/%m/%Y")
+    ultima_data = sabado.strftime("%d/%m/%Y")
 
     md.append(f"# Relatório Semanal - Monitoramento de Conectividade AGHUSE\n")
     md.append(f"**Período**: {primeira_data} a {ultima_data}\n\n")
 
-    # Estatísticas gerais do período
+    # Filtrar dados apenas desta semana
+    dados_semana = {}
+    for dia in dias_da_semana:
+        # Usar date diretamente, pois as chaves em dados_por_dia são date objects
+        if dia in dados_por_dia:
+            dados_semana[dia] = dados_por_dia[dia]
+        else:
+            dados_semana[dia] = []  # Dia sem dados
+
+    # Estatísticas gerais do período (apenas dias com dados)
     todos_dados = []
-    for dados_dia in dados_por_dia.values():
-        todos_dados.extend(dados_dia)
+    for dados_dia in dados_semana.values():
+        if dados_dia:  # Se há dados no dia
+            todos_dados.extend(dados_dia)
+
+    # Se não há nenhum dado na semana
+    if not todos_dados:
+        md.append("**Aviso**: Nenhum dado coletado para esta semana ainda.\n\n")
+        md.append("## Análise por Dia\n\n")
+        md.append("| Data | Testes | Sem Perda / Com Perda | Pacotes Perdidos | Disponibilidade | AGHUSE (ms) | Rede Externa (ms) |\n")
+        md.append("|------|--------|-----------------------|------------------|-----------------|-------------|-------------------|\n")
+        for dia in dias_da_semana:
+            data_fmt = dia.strftime("%d/%m/%Y")
+            md.append(f"| {data_fmt} | - | - | - | - | - | - |\n")
+        return ''.join(md)
 
     stats_geral = calcular_estatisticas_geral(todos_dados)
 
@@ -1209,15 +1420,18 @@ def gerar_relatorio_semanal(dados_por_dia):
 
     # Análise por Dia
     md.append("## Análise por Dia\n\n")
-    md.append("| Data | Testes | Sem Perda / Com Perda | Pacotes Perdidos | Disponibilidade | Latência Média |\n")
-    md.append("|------|--------|-----------------------|------------------|-----------------|----------------|\n")
+    md.append("| Data | Testes | Sem Perda / Com Perda | Pacotes Perdidos | Disponibilidade | AGHUSE (ms) | Rede Externa (ms) |\n")
+    md.append("|------|--------|-----------------------|------------------|-----------------|-------------|-------------------|\n")
 
-    for dia in dias_ordenados:
-        dados_dia = dados_por_dia[dia]
-        stats = calcular_estatisticas_dia(dados_dia)
+    # Iterar pelos 7 dias da semana (domingo a sábado)
+    for dia in dias_da_semana:
         data_fmt = dia.strftime("%d/%m/%Y")
 
-        md.append(f"| {data_fmt} | {stats['total_testes']} | {stats['testes_sem_perda']} / {stats['testes_com_perda']} | {stats['total_pacotes_perdidos']} | {stats['disponibilidade']:.2f}% | {stats['aghuse_media']:.1f}ms |\n")
+        if dados_semana[dia]:  # Se há dados para este dia
+            stats = calcular_estatisticas_dia(dados_semana[dia])
+            md.append(f"| {data_fmt} | {stats['total_testes']} | {stats['testes_sem_perda']} / {stats['testes_com_perda']} | {stats['total_pacotes_perdidos']} | {stats['disponibilidade']:.2f}% | {stats['aghuse_media']:.1f}ms | {stats['externo_media']:.1f}ms |\n")
+        else:  # Dia sem dados
+            md.append(f"| {data_fmt} | - | - | - | - | - | - |\n")
 
     # Análise de Latência por Faixa Horária
     stats_latencia_hora = analisar_latencia_por_horario(todos_dados)
@@ -1228,8 +1442,14 @@ def gerar_relatorio_semanal(dados_por_dia):
         md.append(f"> Cada linha representa a média de todos os testes naquela hora em todos os dias.\n\n")
         md.append(gerar_tabela_latencia_horaria(stats_latencia_hora, incluir_grafico=True))
 
-    # Análise de Horários Críticos
-    horarios_problemas, horarios_latencia = analisar_horarios_problematicos(dados_por_dia)
+    # Análise de Horários Críticos (apenas da semana atual)
+    # Converter dados_semana para formato esperado por analisar_horarios_problematicos
+    dados_semana_para_analise = {}
+    for dia, dados in dados_semana.items():
+        if dados:  # Apenas dias com dados
+            dados_semana_para_analise[dia] = dados
+
+    horarios_problemas, horarios_latencia = analisar_horarios_problematicos(dados_semana_para_analise)
 
     if horarios_problemas:
         md.append("## Análise de Horários Críticos\n\n")
@@ -1272,30 +1492,7 @@ def gerar_relatorio_semanal(dados_por_dia):
     # ANÁLISES AVANÇADAS
     # ========================================================================
 
-    # 1. Regressão Linear e Tendências
-    regressao = calcular_regressao_linear(todos_dados)
-    md.append("## Análise de Tendências\n\n")
-    md.append(f"**Regressão Linear**: {regressao['slope']:+.2f}ms/dia ")
-    md.append(f"(R² = {regressao['r_squared']:.3f}, Tendência: {regressao['tendencia']})\n\n")
-    md.append(f"**Previsão 7 dias**: {regressao['previsao_7d']:.1f}ms")
-
-    if regressao['r_squared'] < 0.5:
-        md.append(" ⚠️ *Baixa confiabilidade (R² < 0.5)*")
-    md.append("\n\n")
-
-    # 2. Horários de Pico
-    picos = detectar_horarios_pico(stats_latencia_hora)
-    md.append("## Horários de Pico\n\n")
-    if picos:
-        for pico in picos:
-            md.append(f"- **{pico['nome']}**: {pico['inicio']:02d}h-{pico['fim']:02d}h ")
-            md.append(f"(latência média {pico['latencia_media']:.1f}ms, ")
-            md.append(f"+{pico['diferenca_media']:.1f}ms acima da média)\n")
-    else:
-        md.append("Nenhum período de pico identificado.\n")
-    md.append("\n")
-
-    # 3. Score de Qualidade por Horário
+    # 1. Score de Qualidade por Horário
     scores_horario = {}
     for hora in range(24):
         if hora in stats_latencia_hora:
@@ -1343,9 +1540,78 @@ def gerar_relatorio_semanal(dados_por_dia):
                 md.append(f"{dia['testes']} |\n")
         md.append("\n")
 
-    # 5. Detecção de Anomalias
+    # 5. Detecção de Anomalias, Horários de Pico e Análise de Rotas
     anomalias = detectar_anomalias(todos_dados, stats_latencia_hora)
+    picos = detectar_horarios_pico(stats_latencia_hora)
+    analise_rotas = analisar_rotas_tracert(todos_dados)
+
     md.append("## Alertas de Anomalias\n\n")
+
+    # 5.1 Horários de Pico
+    md.append("### Horários de Pico\n\n")
+    if picos:
+        md.append("Períodos com latência significativamente acima da média (>10%):\n\n")
+        for pico in picos:
+            md.append(f"- **{pico['nome']}**: {pico['inicio']:02d}h-{pico['fim']:02d}h ")
+            md.append(f"(latência média {pico['latencia_media']:.1f}ms, ")
+            md.append(f"+{pico['diferenca_media']:.1f}ms acima da média, {pico['count']}h consecutivas)\n")
+        md.append("\n")
+    else:
+        md.append("Nenhum período de pico identificado. ✅\n\n")
+
+    # 5.2 Análise de Rotas e Correlação com Perda de Pacotes
+    md.append("### Análise de Rotas (Tracert)\n\n")
+
+    if analise_rotas['rota_principal']:
+        num_rotas = len(analise_rotas['rotas_unicas'])
+        md.append(f"**Total de rotas detectadas**: {num_rotas}\n\n")
+
+        if num_rotas > 1:
+            md.append("**Rotas identificadas**:\n\n")
+            md.append("| Rota | Ocorrências | Com Perda | Sem Perda | Taxa de Perda |\n")
+            md.append("|------|-------------|-----------|-----------|---------------|\n")
+
+            # Ordenar rotas por ocorrência
+            rotas_ordenadas = sorted(
+                analise_rotas['rotas_unicas'].items(),
+                key=lambda x: x[1]['count'],
+                reverse=True
+            )
+
+            for idx, (rota_hash, stats) in enumerate(rotas_ordenadas[:5], 1):
+                # Simplificar rota para exibição
+                ips = rota_hash.split(' -> ')
+                rota_simples = f"{ips[0]} -> ... -> {ips[-1]}" if len(ips) > 3 else rota_hash
+                taxa_perda = (stats['com_perda'] / stats['count'] * 100) if stats['count'] > 0 else 0
+                principal = " (Principal)" if rota_hash == analise_rotas['rota_principal'] else ""
+
+                md.append(f"| Rota {idx}{principal} | {stats['count']} | {stats['com_perda']} | {stats['sem_perda']} | {taxa_perda:.1f}% |\n")
+
+            md.append("\n")
+
+        # Correlação
+        md.append(f"**Correlação Rota vs Perda de Pacotes**: {analise_rotas['correlacao']['texto']}\n\n")
+
+        # Mudanças de rota
+        if analise_rotas['mudancas_rota']:
+            total_mudancas = len(analise_rotas['mudancas_rota'])
+            mudancas_com_perda = sum(1 for m in analise_rotas['mudancas_rota'] if m['teve_perda'])
+
+            md.append(f"**Mudanças de rota detectadas**: {total_mudancas} ")
+            md.append(f"({mudancas_com_perda} associadas a perda de pacotes)\n\n")
+
+            if mudancas_com_perda > 0:
+                md.append("*Últimas mudanças de rota com perda*:\n\n")
+                mudancas_recentes = [m for m in analise_rotas['mudancas_rota'] if m['teve_perda']][-5:]
+                for mudanca in mudancas_recentes:
+                    timestamp = mudanca['timestamp'].strftime('%d/%m às %H:%M')
+                    md.append(f"- {timestamp}\n")
+                md.append("\n")
+    else:
+        md.append("Dados de tracert insuficientes para análise.\n\n")
+
+    # 5.3 Anomalias de Latência
+    md.append("### Anomalias de Latência\n\n")
     if anomalias:
         md.append(f"Total de {len(anomalias)} anomalia(s) detectada(s):\n\n")
         for anomalia in anomalias[:10]:  # Top 10
@@ -1362,7 +1628,7 @@ def gerar_relatorio_semanal(dados_por_dia):
         if len(anomalias) > 10:
             md.append(f"\n*Exibindo 10 de {len(anomalias)} anomalias. Anomalias indicam desvios significativos do padrão normal.*\n")
     else:
-        md.append("Nenhuma anomalia detectada no período. ✅\n")
+        md.append("Nenhuma anomalia de latência detectada no período. ✅\n")
     md.append("\n")
 
     # 6. Distribuição de Latência
@@ -1433,15 +1699,15 @@ def gerar_relatorio_geral(dados_por_dia):
 
     # Análise por Dia
     md.append("## Análise por Dia\n\n")
-    md.append("| Data | Testes | Sem Perda / Com Perda | Pacotes Perdidos | Disponibilidade | Latência Média |\n")
-    md.append("|------|--------|-----------------------|------------------|-----------------|----------------|\n")
+    md.append("| Data | Testes | Sem Perda / Com Perda | Pacotes Perdidos | Disponibilidade | AGHUSE (ms) | Rede Externa (ms) |\n")
+    md.append("|------|--------|-----------------------|------------------|-----------------|-------------|-------------------|\n")
 
     for dia in dias_ordenados:
         dados_dia = dados_por_dia[dia]
         stats = calcular_estatisticas_dia(dados_dia)
         data_fmt = dia.strftime("%d/%m/%Y")
 
-        md.append(f"| {data_fmt} | {stats['total_testes']} | {stats['testes_sem_perda']} / {stats['testes_com_perda']} | {stats['total_pacotes_perdidos']} | {stats['disponibilidade']:.2f}% | {stats['aghuse_media']:.1f}ms |\n")
+        md.append(f"| {data_fmt} | {stats['total_testes']} | {stats['testes_sem_perda']} / {stats['testes_com_perda']} | {stats['total_pacotes_perdidos']} | {stats['disponibilidade']:.2f}% | {stats['aghuse_media']:.1f}ms | {stats['externo_media']:.1f}ms |\n")
 
     # Análise de Horários Críticos
     horarios_problemas, horarios_latencia = analisar_horarios_problematicos(dados_por_dia)
@@ -1492,49 +1758,61 @@ def gerar_relatorio_geral(dados_por_dia):
     # ANÁLISES AVANÇADAS
     # ============================================================
 
-    # 1. Regressão Linear
-    regressao = calcular_regressao_linear(todos_dados)
-    md.append("\n## Análise de Tendências\n\n")
-    md.append(f"**Regressão Linear**: {regressao['slope']:+.2f}ms/dia ")
-    md.append(f"(R² = {regressao['r_squared']:.3f}, Tendência: {regressao['tendencia']})\n\n")
-    md.append(f"**Previsão 7 dias**: {regressao['previsao_7d']:.1f}ms")
-    if regressao['r_squared'] < 0.5:
-        md.append(f" ⚠️ *Baixa confiança (R² < 0.5)*")
-    md.append("\n\n")
+    # 1. Score de Qualidade por Horário (AGHUSE e Rede Externa)
+    scores_horario_aghuse = {}
+    scores_horario_externo = {}
 
-    # 2. Horários de Pico
-    picos = detectar_horarios_pico(stats_latencia_hora)
-    md.append("## Horários de Pico\n\n")
-    if picos:
-        for pico in picos:
-            md.append(f"- **{pico['nome']}**: {pico['inicio']:02d}h-{pico['fim']:02d}h ")
-            md.append(f"(latência média {pico['latencia_media']:.1f}ms, ")
-            md.append(f"+{pico['diferenca_media']:.1f}ms acima da média)\n")
-    else:
-        md.append("Nenhum período de pico identificado.\n")
-    md.append("\n")
-
-    # 3. Score de Qualidade por Horário
-    scores_horario = {}
     for hora in range(24):
         if hora in stats_latencia_hora:
             h_data = stats_latencia_hora[hora]
+
+            # Score AGHUSE
             media_lat = h_data['media']
             testes_perda = h_data.get('testes_com_perda', 0)
             total_testes = h_data.get('total_testes', 1)
             perda_pct = (testes_perda / total_testes * 100) if total_testes > 0 else 0
 
-            scores_horario[hora] = calcular_score_qualidade_horario(
+            scores_horario_aghuse[hora] = calcular_score_qualidade_horario(
                 media_lat, perda_pct, LATENCIA_IDEAL
             )
 
+            # Score Rede Externa (usando dados do mesmo h_data)
+            media_lat_ext = h_data.get('media_externo', 0)
+            testes_perda_ext = h_data.get('testes_com_perda_externo', 0)
+            perda_pct_ext = (testes_perda_ext / total_testes * 100) if total_testes > 0 else 0
+
+            if media_lat_ext > 0:  # Só calcular se há dados
+                scores_horario_externo[hora] = calcular_score_qualidade_horario(
+                    media_lat_ext, perda_pct_ext, LATENCIA_IDEAL
+                )
+
     md.append("## Score de Qualidade por Horário\n\n")
-    md.append("| Horário | Score | Classificação | Latência | Perda |\n")
-    md.append("|---------|-------|---------------|----------|-------|\n")
-    for hora in sorted(scores_horario.keys()):
-        s = scores_horario[hora]
-        md.append(f"| {hora:02d}h | {s['score']} | {s['classificacao']} | ")
-        md.append(f"{s['componente_latencia']} | {s['componente_perda']} |\n")
+    md.append("| Horário | Score AGHUSE | Class. AGHUSE | Score Rede Ext. | Class. Rede Ext. |\n")
+    md.append("|---------|--------------|---------------|-----------------|------------------|\n")
+
+    for hora in range(24):
+        if hora in scores_horario_aghuse or hora in scores_horario_externo:
+            # Score AGHUSE
+            if hora in scores_horario_aghuse:
+                s_ag = scores_horario_aghuse[hora]
+                score_ag_text = f"{s_ag['score']}"
+                class_ag_text = s_ag['classificacao']
+            else:
+                score_ag_text = "N/A"
+                class_ag_text = "N/A"
+
+            # Score Rede Externa
+            if hora in scores_horario_externo:
+                s_ext = scores_horario_externo[hora]
+                score_ext_text = f"{s_ext['score']}"
+                class_ext_text = s_ext['classificacao']
+            else:
+                score_ext_text = "N/A"
+                class_ext_text = "N/A"
+
+            md.append(f"| {hora:02d}h | {score_ag_text} | {class_ag_text} | ")
+            md.append(f"{score_ext_text} | {class_ext_text} |\n")
+
     md.append("\n")
 
     # 4. Análise por Dia da Semana
@@ -1560,9 +1838,78 @@ def gerar_relatorio_geral(dados_por_dia):
             md.append(f"{dia['testes']} |\n")
     md.append("\n")
 
-    # 5. Detecção de Anomalias
+    # 5. Detecção de Anomalias, Horários de Pico e Análise de Rotas
     anomalias = detectar_anomalias(todos_dados, stats_latencia_hora)
+    picos = detectar_horarios_pico(stats_latencia_hora)
+    analise_rotas = analisar_rotas_tracert(todos_dados)
+
     md.append("## Alertas de Anomalias\n\n")
+
+    # 5.1 Horários de Pico
+    md.append("### Horários de Pico\n\n")
+    if picos:
+        md.append("Períodos com latência significativamente acima da média (>10%):\n\n")
+        for pico in picos:
+            md.append(f"- **{pico['nome']}**: {pico['inicio']:02d}h-{pico['fim']:02d}h ")
+            md.append(f"(latência média {pico['latencia_media']:.1f}ms, ")
+            md.append(f"+{pico['diferenca_media']:.1f}ms acima da média, {pico['count']}h consecutivas)\n")
+        md.append("\n")
+    else:
+        md.append("Nenhum período de pico identificado. ✅\n\n")
+
+    # 5.2 Análise de Rotas e Correlação com Perda de Pacotes
+    md.append("### Análise de Rotas (Tracert)\n\n")
+
+    if analise_rotas['rota_principal']:
+        num_rotas = len(analise_rotas['rotas_unicas'])
+        md.append(f"**Total de rotas detectadas**: {num_rotas}\n\n")
+
+        if num_rotas > 1:
+            md.append("**Rotas identificadas**:\n\n")
+            md.append("| Rota | Ocorrências | Com Perda | Sem Perda | Taxa de Perda |\n")
+            md.append("|------|-------------|-----------|-----------|---------------|\n")
+
+            # Ordenar rotas por ocorrência
+            rotas_ordenadas = sorted(
+                analise_rotas['rotas_unicas'].items(),
+                key=lambda x: x[1]['count'],
+                reverse=True
+            )
+
+            for idx, (rota_hash, stats) in enumerate(rotas_ordenadas[:5], 1):
+                # Simplificar rota para exibição
+                ips = rota_hash.split(' -> ')
+                rota_simples = f"{ips[0]} -> ... -> {ips[-1]}" if len(ips) > 3 else rota_hash
+                taxa_perda = (stats['com_perda'] / stats['count'] * 100) if stats['count'] > 0 else 0
+                principal = " (Principal)" if rota_hash == analise_rotas['rota_principal'] else ""
+
+                md.append(f"| Rota {idx}{principal} | {stats['count']} | {stats['com_perda']} | {stats['sem_perda']} | {taxa_perda:.1f}% |\n")
+
+            md.append("\n")
+
+        # Correlação
+        md.append(f"**Correlação Rota vs Perda de Pacotes**: {analise_rotas['correlacao']['texto']}\n\n")
+
+        # Mudanças de rota
+        if analise_rotas['mudancas_rota']:
+            total_mudancas = len(analise_rotas['mudancas_rota'])
+            mudancas_com_perda = sum(1 for m in analise_rotas['mudancas_rota'] if m['teve_perda'])
+
+            md.append(f"**Mudanças de rota detectadas**: {total_mudancas} ")
+            md.append(f"({mudancas_com_perda} associadas a perda de pacotes)\n\n")
+
+            if mudancas_com_perda > 0:
+                md.append("*Últimas mudanças de rota com perda*:\n\n")
+                mudancas_recentes = [m for m in analise_rotas['mudancas_rota'] if m['teve_perda']][-5:]
+                for mudanca in mudancas_recentes:
+                    timestamp = mudanca['timestamp'].strftime('%d/%m às %H:%M')
+                    md.append(f"- {timestamp}\n")
+                md.append("\n")
+    else:
+        md.append("Dados de tracert insuficientes para análise.\n\n")
+
+    # 5.3 Anomalias de Latência
+    md.append("### Anomalias de Latência\n\n")
     if anomalias:
         md.append(f"Total de {len(anomalias)} anomalia(s) detectada(s):\n\n")
         for anomalia in anomalias[:10]:  # Top 10
@@ -1580,9 +1927,9 @@ def gerar_relatorio_geral(dados_por_dia):
                     md.append(" 🔴 **ALTA**")
                 md.append("\n")
         if len(anomalias) > 10:
-            md.append(f"\n*Exibindo 10 de {len(anomalias)} anomalias.*\n")
+            md.append(f"\n*Exibindo 10 de {len(anomalias)} anomalias. Anomalias indicam desvios significativos do padrão normal.*\n")
     else:
-        md.append("Nenhuma anomalia detectada no período.\n")
+        md.append("Nenhuma anomalia de latência detectada no período. ✅\n")
     md.append("\n")
 
     # 6. Distribuição de Latência
@@ -1653,13 +2000,47 @@ def main():
 
         print(f"  [OK] {nome_arquivo}")
 
-    # Gerar relatório semanal
-    print("\nGerando relatorio semanal...")
-    relatorio_semanal = gerar_relatorio_semanal(dados_por_dia)
-    caminho_semanal = os.path.join(pasta_relatorios, 'RELATORIO_SEMANAL.md')
-    with open(caminho_semanal, 'w', encoding='utf-8') as f:
-        f.write(relatorio_semanal)
-    print(f"  [OK] RELATORIO_SEMANAL.md")
+    # Gerar relatórios semanais para todas as semanas que tenham dados
+    print("\nGerando relatorios semanais...")
+
+    # Identificar todas as semanas presentes nos dados
+    if dados_por_dia:
+        datas_disponiveis = sorted(dados_por_dia.keys())
+        primeira_data = datas_disponiveis[0]
+        ultima_data = datas_disponiveis[-1]
+
+        # Encontrar o domingo da primeira semana
+        dias_desde_domingo = (primeira_data.weekday() + 1) % 7
+        primeiro_domingo = primeira_data - timedelta(days=dias_desde_domingo)
+
+        # Gerar relatório para cada semana completa
+        domingo_atual = primeiro_domingo
+        relatorios_semanais_gerados = 0
+
+        while domingo_atual <= ultima_data:
+            sabado_atual = domingo_atual + timedelta(days=6)
+
+            # Filtrar dados da semana (domingo a sábado)
+            dados_semana = {
+                dia: dados for dia, dados in dados_por_dia.items()
+                if domingo_atual <= dia <= sabado_atual
+            }
+
+            # Só gerar relatório se houver pelo menos 1 dia de dados nesta semana
+            if dados_semana:
+                relatorio_semanal = gerar_relatorio_semanal(dados_por_dia, domingo_atual, sabado_atual)
+
+                # Nome do arquivo com o período: RELATORIO_SEMANAL_DD-MM-AAAA_a_DD-MM-AAAA.md
+                nome_semanal = f"RELATORIO_SEMANAL_{domingo_atual.strftime('%d-%m-%Y')}_a_{sabado_atual.strftime('%d-%m-%Y')}.md"
+                caminho_semanal = os.path.join(pasta_relatorios, nome_semanal)
+
+                with open(caminho_semanal, 'w', encoding='utf-8') as f:
+                    f.write(relatorio_semanal)
+                print(f"  [OK] {nome_semanal}")
+                relatorios_semanais_gerados += 1
+
+            # Avançar para próxima semana
+            domingo_atual += timedelta(days=7)
 
     # Gerar relatório geral
     print("\nGerando relatorio geral...")
@@ -1672,8 +2053,16 @@ def main():
     print(f"\nProcesso concluido!")
     print(f"\nRelatorios gerados na pasta '{pasta_relatorios}':")
     print(f"  - {len(dados_por_dia)} relatorios diarios")
-    print(f"  - 1 relatorio semanal")
+    print(f"  - {relatorios_semanais_gerados} relatorio(s) semanal(is)")
     print(f"  - 1 relatorio geral")
+
+    # Atualizar index.html com lista de relatórios
+    print(f"\nAtualizando index.html...")
+    try:
+        import subprocess
+        subprocess.run(['python', 'scripts/atualizar_index_completo.py'], check=True)
+    except Exception as e:
+        print(f"[AVISO] Erro ao atualizar index.html: {e}")
 
 if __name__ == '__main__':
     main()

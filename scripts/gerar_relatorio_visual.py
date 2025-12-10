@@ -48,23 +48,63 @@ def parse_relatorio_md(file_path):
     if match:
         data['horarios_lentidao'] = int(match.group(1))
 
-    # Extrair desempenho por horário
+    # Extrair desempenho por horário (agora com AGHUSE e Rede Externa)
     desempenho_section = re.search(r'## Desempenho por Horário.*?(?=\*\*Gráfico|\Z)', content, re.DOTALL)
     if desempenho_section:
         lines = desempenho_section.group().split('\n')
         for line in lines:
-            # Regex mais flexível para capturar a linha
-            match = re.match(r'\|\s*(\d+)h\s*\|\s*([\d.]+)\s*\(([\d.]+)-([\d.]+)\)\s*\|\s*(.+?)\s*\|', line)
+            # Regex atualizada para capturar AGHUSE e Rede Externa
+            match = re.match(r'\|\s*(\d+)h\s*\|\s*([\d.]+)\s*\(([\d.]+)-([\d.]+)\)\s*\|\s*([\d.]+)\s*\(([\d.]+)-([\d.]+)\)\s*\|\s*(.+?)\s*\|', line)
+            if not match:
+                # Tentar com N/A para rede externa
+                match = re.match(r'\|\s*(\d+)h\s*\|\s*([\d.]+)\s*\(([\d.]+)-([\d.]+)\)\s*\|\s*N/A\s*\|\s*(.+?)\s*\|', line)
             if match:
                 hora = int(match.group(1))
                 latencia = float(match.group(2))
                 lat_min = float(match.group(3))
                 lat_max = float(match.group(4))
-                status_text = match.group(5).strip()
 
-                # Extrair status e perdas
-                perda_match = re.search(r'\[(\d+)\s*perda', status_text)
-                perdas = int(perda_match.group(1)) if perda_match else 0
+                # Verificar se tem dados de rede externa (8 grupos) ou N/A (5 grupos)
+                if len(match.groups()) >= 8:
+                    # Tem dados da rede externa
+                    latencia_ext = float(match.group(5))
+                    lat_min_ext = float(match.group(6))
+                    lat_max_ext = float(match.group(7))
+                    status_text = match.group(8).strip()
+                else:
+                    # N/A para rede externa
+                    latencia_ext = 0
+                    lat_min_ext = 0
+                    lat_max_ext = 0
+                    status_text = match.group(5).strip()
+
+                # Extrair perdas de AGHUSE e Rede Externa
+                perdas_aghuse = 0
+                perdas_externo = 0
+
+                # Buscar padrão novo: [AG:Xpkt, EX:Ypkt] (pacotes perdidos)
+                perda_ag_match = re.search(r'AG:(\d+)pkt', status_text)
+                if perda_ag_match:
+                    perdas_aghuse = int(perda_ag_match.group(1))
+                else:
+                    # Fallback para formato intermediário [AG:X perda(s)]
+                    perda_ag_match = re.search(r'AG:(\d+)\s*perda', status_text)
+                    if perda_ag_match:
+                        perdas_aghuse = int(perda_ag_match.group(1))
+                    else:
+                        # Fallback para formato muito antigo [N perda(s)]
+                        perda_match = re.search(r'\[(\d+)\s*perda', status_text)
+                        if perda_match and 'AG:' not in status_text and 'EX:' not in status_text:
+                            perdas_aghuse = int(perda_match.group(1))
+
+                perda_ex_match = re.search(r'EX:(\d+)pkt', status_text)
+                if perda_ex_match:
+                    perdas_externo = int(perda_ex_match.group(1))
+                else:
+                    # Fallback para formato intermediário [EX:X perda(s)]
+                    perda_ex_match = re.search(r'EX:(\d+)\s*perda', status_text)
+                    if perda_ex_match:
+                        perdas_externo = int(perda_ex_match.group(1))
 
                 # Remover a parte de perdas do status
                 status = status_text.split('[')[0].strip()
@@ -74,9 +114,39 @@ def parse_relatorio_md(file_path):
                     'latencia': latencia,
                     'lat_min': lat_min,
                     'lat_max': lat_max,
+                    'latencia_externo': latencia_ext,
+                    'lat_min_externo': lat_min_ext,
+                    'lat_max_externo': lat_max_ext,
                     'status': status,
-                    'perdas': perdas
+                    'perdas': perdas_aghuse,
+                    'perdas_externo': perdas_externo
                 })
+            else:
+                # Fallback para formato antigo (sem rede externa)
+                match_old = re.match(r'\|\s*(\d+)h\s*\|\s*([\d.]+)\s*\(([\d.]+)-([\d.]+)\)\s*\|\s*(.+?)\s*\|', line)
+                if match_old:
+                    hora = int(match_old.group(1))
+                    latencia = float(match_old.group(2))
+                    lat_min = float(match_old.group(3))
+                    lat_max = float(match_old.group(4))
+                    status_text = match_old.group(5).strip()
+
+                    perda_match = re.search(r'\[(\d+)\s*perda', status_text)
+                    perdas = int(perda_match.group(1)) if perda_match else 0
+                    status = status_text.split('[')[0].strip()
+
+                    data['desempenho'].append({
+                        'hora': hora,
+                        'latencia': latencia,
+                        'lat_min': lat_min,
+                        'lat_max': lat_max,
+                        'latencia_externo': 0,
+                        'lat_min_externo': 0,
+                        'lat_max_externo': 0,
+                        'status': status,
+                        'perdas': perdas,
+                        'perdas_externo': 0
+                    })
 
     return data
 
@@ -135,14 +205,27 @@ def parse_relatorio_semanal(file_path):
     dias_section = re.search(r'## Análise por Dia\s*\n\n.*?\n\|---.*?\n((?:\|.*?\n)+)', content, re.DOTALL)
     if dias_section:
         for line in dias_section.group(1).strip().split('\n'):
-            match = re.match(r'\|\s*(\d{2}/\d{2}/\d{4})\s*\|\s*(\d+)\s*\|.*?\|\s*\d+\s*\|\s*([\d.]+)%\s*\|\s*([\d.]+)ms', line)
+            # Tentar regex novo formato com AGHUSE e Rede Externa
+            match = re.match(r'\|\s*(\d{2}/\d{2}/\d{4})\s*\|\s*(\d+)\s*\|.*?\|\s*\d+\s*\|\s*([\d.]+)%\s*\|\s*([\d.]+)ms\s*\|\s*([\d.]+)ms', line)
             if match:
                 data['dias'].append({
                     'data': match.group(1),
                     'testes': int(match.group(2)),
                     'disponibilidade': float(match.group(3)),
-                    'latencia': float(match.group(4))
+                    'latencia': float(match.group(4)),
+                    'latencia_externo': float(match.group(5))
                 })
+            else:
+                # Fallback: formato antigo sem rede externa
+                match_old = re.match(r'\|\s*(\d{2}/\d{2}/\d{4})\s*\|\s*(\d+)\s*\|.*?\|\s*\d+\s*\|\s*([\d.]+)%\s*\|\s*([\d.]+)ms', line)
+                if match_old:
+                    data['dias'].append({
+                        'data': match_old.group(1),
+                        'testes': int(match_old.group(2)),
+                        'disponibilidade': float(match_old.group(3)),
+                        'latencia': float(match_old.group(4)),
+                        'latencia_externo': 0.0
+                    })
 
     # Se latência média não foi encontrada no sumário, calcular a partir dos dias (média ponderada)
     if data['latencia_media'] == 0.0 and data['dias']:
@@ -150,20 +233,63 @@ def parse_relatorio_semanal(file_path):
         total_testes = sum(d['testes'] for d in data['dias'])
         data['latencia_media'] = total_latencia_ponderada / total_testes if total_testes > 0 else 0.0
 
-    # Extrair latência por horário
+    # Extrair latência por horário (AGHUSE e Rede Externa)
     horario_section = re.search(r'## Análise de Latência por Faixa Horária.*?\n\|.*?\n\|---.*?\n((?:\|.*?\n)+)', content, re.DOTALL)
     if horario_section:
         for line in horario_section.group(1).strip().split('\n'):
-            match = re.match(r'\|\s*(\d+)h\s*\|\s*([\d.]+)\s*\(([\d.]+)-([\d.]+)\)\s*\|\s*(.+?)\s*\|', line)
+            # Tentar regex com dados de rede externa
+            match = re.match(r'\|\s*(\d+)h\s*\|\s*([\d.]+)\s*\(([\d.]+)-([\d.]+)\)\s*\|\s*([\d.]+)\s*\(([\d.]+)-([\d.]+)\)\s*\|\s*(.+?)\s*\|', line)
+            if not match:
+                # Tentar com N/A para rede externa
+                match = re.match(r'\|\s*(\d+)h\s*\|\s*([\d.]+)\s*\(([\d.]+)-([\d.]+)\)\s*\|\s*N/A\s*\|\s*(.+?)\s*\|', line)
             if match:
                 hora = int(match.group(1))
                 latencia = float(match.group(2))
                 lat_min = float(match.group(3))
                 lat_max = float(match.group(4))
-                status_text = match.group(5).strip()
 
-                perda_match = re.search(r'\[(\d+)\s*perda', status_text)
-                perdas = int(perda_match.group(1)) if perda_match else 0
+                # Verificar se tem dados de rede externa (8 grupos) ou N/A (5 grupos)
+                if len(match.groups()) >= 8:
+                    # Tem dados da rede externa
+                    latencia_ext = float(match.group(5))
+                    lat_min_ext = float(match.group(6))
+                    lat_max_ext = float(match.group(7))
+                    status_text = match.group(8).strip()
+                else:
+                    # N/A para rede externa
+                    latencia_ext = 0
+                    lat_min_ext = 0
+                    lat_max_ext = 0
+                    status_text = match.group(5).strip()
+
+                # Extrair perdas de AGHUSE e Rede Externa
+                perdas_aghuse = 0
+                perdas_externo = 0
+
+                # Buscar padrão novo: [AG:Xpkt, EX:Ypkt] (pacotes perdidos)
+                perda_ag_match = re.search(r'AG:(\d+)pkt', status_text)
+                if perda_ag_match:
+                    perdas_aghuse = int(perda_ag_match.group(1))
+                else:
+                    # Fallback para formato intermediário [AG:X perda(s)]
+                    perda_ag_match = re.search(r'AG:(\d+)\s*perda', status_text)
+                    if perda_ag_match:
+                        perdas_aghuse = int(perda_ag_match.group(1))
+                    else:
+                        # Fallback para formato muito antigo [N perda(s)]
+                        perda_match = re.search(r'\[(\d+)\s*perda', status_text)
+                        if perda_match and 'AG:' not in status_text and 'EX:' not in status_text:
+                            perdas_aghuse = int(perda_match.group(1))
+
+                perda_ex_match = re.search(r'EX:(\d+)pkt', status_text)
+                if perda_ex_match:
+                    perdas_externo = int(perda_ex_match.group(1))
+                else:
+                    # Fallback para formato intermediário [EX:X perda(s)]
+                    perda_ex_match = re.search(r'EX:(\d+)\s*perda', status_text)
+                    if perda_ex_match:
+                        perdas_externo = int(perda_ex_match.group(1))
+
                 status = status_text.split('[')[0].strip()
 
                 data['horarios'].append({
@@ -171,9 +297,39 @@ def parse_relatorio_semanal(file_path):
                     'latencia': latencia,
                     'lat_min': lat_min,
                     'lat_max': lat_max,
+                    'latencia_externo': latencia_ext,
+                    'lat_min_externo': lat_min_ext,
+                    'lat_max_externo': lat_max_ext,
                     'status': status,
-                    'perdas': perdas
+                    'perdas': perdas_aghuse,
+                    'perdas_externo': perdas_externo
                 })
+            else:
+                # Fallback para formato antigo
+                match_old = re.match(r'\|\s*(\d+)h\s*\|\s*([\d.]+)\s*\(([\d.]+)-([\d.]+)\)\s*\|\s*(.+?)\s*\|', line)
+                if match_old:
+                    hora = int(match_old.group(1))
+                    latencia = float(match_old.group(2))
+                    lat_min = float(match_old.group(3))
+                    lat_max = float(match_old.group(4))
+                    status_text = match_old.group(5).strip()
+
+                    perda_match = re.search(r'\[(\d+)\s*perda', status_text)
+                    perdas = int(perda_match.group(1)) if perda_match else 0
+                    status = status_text.split('[')[0].strip()
+
+                    data['horarios'].append({
+                        'hora': hora,
+                        'latencia': latencia,
+                        'lat_min': lat_min,
+                        'lat_max': lat_max,
+                        'latencia_externo': 0,
+                        'lat_min_externo': 0,
+                        'lat_max_externo': 0,
+                        'status': status,
+                        'perdas': perdas,
+                        'perdas_externo': 0
+                    })
 
     # ============================================================
     # PARSING DE ANÁLISES AVANÇADAS
@@ -200,17 +356,36 @@ def parse_relatorio_semanal(file_path):
             'latencia_media': float(lat)
         })
 
-    # 3. Scores por Horário
+    # 3. Scores por Horário (AGHUSE e Rede Externa)
     scores_section = re.search(r'## Score de Qualidade por Horário.*?\n\|.*?\n\|---.*?\n((?:\|.*?\n)+)', content, re.DOTALL)
     if scores_section:
         for line in scores_section.group(1).strip().split('\n'):
-            score_match = re.match(r'\|\s*(\d+)h\s*\|\s*([\d.]+)\s*\|\s*(\w+)', line)
+            # Tentar formato novo com AGHUSE e Rede Externa
+            score_match = re.match(r'\|\s*(\d+)h\s*\|\s*([\d.]+|N/A)\s*\|\s*(\w+|N/A)\s*\|\s*([\d.]+|N/A)\s*\|\s*(\w+|N/A)', line)
             if score_match:
+                score_ag = float(score_match.group(2)) if score_match.group(2) != 'N/A' else 0
+                class_ag = score_match.group(3) if score_match.group(3) != 'N/A' else ''
+                score_ext = float(score_match.group(4)) if score_match.group(4) != 'N/A' else 0
+                class_ext = score_match.group(5) if score_match.group(5) != 'N/A' else ''
+
                 data['scores_horario'].append({
                     'hora': int(score_match.group(1)),
-                    'score': float(score_match.group(2)),
-                    'classificacao': score_match.group(3)
+                    'score': score_ag,
+                    'classificacao': class_ag,
+                    'score_externo': score_ext,
+                    'classificacao_externo': class_ext
                 })
+            else:
+                # Fallback para formato antigo (sem rede externa)
+                score_match_old = re.match(r'\|\s*(\d+)h\s*\|\s*([\d.]+)\s*\|\s*(\w+)', line)
+                if score_match_old:
+                    data['scores_horario'].append({
+                        'hora': int(score_match_old.group(1)),
+                        'score': float(score_match_old.group(2)),
+                        'classificacao': score_match_old.group(3),
+                        'score_externo': 0,
+                        'classificacao_externo': ''
+                    })
 
     # 4. Análise por Dia da Semana
     dias_semana_section = re.search(r'## Análise por Dia da Semana.*?\n\|.*?\n\|---.*?\n((?:\|.*?\n)+)', content, re.DOTALL)
@@ -284,13 +459,27 @@ def generate_html_semanal(data, output_path):
     dias_labels = [d['data'] for d in data['dias']]
     dias_disp = [d['disponibilidade'] for d in data['dias']]
     dias_lat = [d['latencia'] for d in data['dias']]
+    dias_lat_externo = [d.get('latencia_externo', 0) for d in data['dias']]
 
     horas_labels = [f"{h['hora']:02d}h" for h in data['horarios']]
     horas_lat = [h['latencia'] for h in data['horarios']]
+    horas_lat_externo = [h.get('latencia_externo', 0) for h in data['horarios']]
     horas_perdas = [h['perdas'] for h in data['horarios']]
+    horas_perdas_externo = [h.get('perdas_externo', 0) for h in data['horarios']]
+
+    # Calcular estatísticas específicas para AGHUSE e Rede Externa
+    latencia_media_aghuse = data['latencia_media']  # Já calculado no parse
+    latencia_media_externo = sum([l for l in horas_lat_externo if l > 0]) / len([l for l in horas_lat_externo if l > 0]) if any(l > 0 for l in horas_lat_externo) else 0
+
+    total_perdas_aghuse = sum(horas_perdas)
+    total_perdas_externo = sum(horas_perdas_externo)
+
+    horarios_perda_aghuse = sum(1 for p in horas_perdas if p > 0)
+    horarios_perda_externo = sum(1 for p in horas_perdas_externo if p > 0)
 
     # Preparar dados para análises avançadas
-    scores_horas = [s['score'] for s in data.get('scores_horario', [])]
+    scores_horas_aghuse = [s['score'] for s in data.get('scores_horario', [])]
+    scores_horas_externo = [s.get('score_externo', 0) for s in data.get('scores_horario', [])]
     scores_labels = [f"{s['hora']:02d}h" for s in data.get('scores_horario', [])]
 
     # Dados da distribuição
@@ -383,30 +572,54 @@ def generate_html_semanal(data, output_path):
         }}
         .metrics-row {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
             margin-bottom: 30px;
+        }}
+
+        @media (min-width: 1200px) {{
+            .metrics-row {{
+                grid-template-columns: repeat(3, 1fr);
+            }}
+        }}
+
+        @media (max-width: 768px) {{
+            .metrics-row {{
+                grid-template-columns: repeat(2, 1fr);
+            }}
+        }}
+
+        @media (max-width: 480px) {{
+            .metrics-row {{
+                grid-template-columns: 1fr;
+            }}
         }}
         .metric-card {{
             background: #f8f9fa;
-            padding: 20px;
+            padding: 18px;
             border-radius: 6px;
             border-left: 4px solid #3498db;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }}
         .metric-card.success {{ border-left-color: #27ae60; }}
         .metric-card.warning {{ border-left-color: #f39c12; }}
         .metric-card.danger {{ border-left-color: #e74c3c; }}
         .metric-label {{
-            font-size: 13px;
+            font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: #7f8c8d;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
+            font-weight: 600;
         }}
         .metric-value {{
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 600;
             color: #2c3e50;
+            line-height: 1.2;
         }}
         .metric-unit {{
             font-size: 16px;
@@ -510,6 +723,34 @@ def generate_html_semanal(data, output_path):
             color: #7f8c8d;
             margin-top: 4px;
         }}
+
+        .btn-voltar {{
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin: 20px 0;
+        }}
+
+        .btn-voltar:hover {{
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }}
+
+        .btn-voltar::before {{
+            content: '← ';
+        }}
+
+        .back-button-container {{
+            text-align: center;
+            padding: 20px 40px 0;
+        }}
     </style>
 </head>
 <body>
@@ -519,6 +760,10 @@ def generate_html_semanal(data, output_path):
             <div class="subtitle">Período: {data['periodo']}</div>
         </div>
 
+        <div class="back-button-container">
+            <a href="../index.html" class="btn-voltar">Voltar para Central de Relatórios</a>
+        </div>
+
         <div class="content">
             <div class="metrics-row">
                 <div class="metric-card success">
@@ -526,16 +771,26 @@ def generate_html_semanal(data, output_path):
                     <div class="metric-value">{data['disponibilidade']:.2f}<span class="metric-unit">%</span></div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-label">Latência Média</div>
-                    <div class="metric-value">{data['latencia_media']:.1f}<span class="metric-unit">ms</span></div>
+                    <div class="metric-label">Latência Média (AGHUSE)</div>
+                    <div class="metric-value">{latencia_media_aghuse:.1f}<span class="metric-unit">ms</span></div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Latência Média (Rede Externa)</div>
+                    <div class="metric-value">{latencia_media_externo:.1f}<span class="metric-unit">ms</span></div>
                 </div>
                 <div class="metric-card warning">
-                    <div class="metric-label">Total de Testes</div>
-                    <div class="metric-value">{data['total_testes']}</div>
+                    <div class="metric-label">Horários com Perda (AGHUSE)</div>
+                    <div class="metric-value">{horarios_perda_aghuse}</div>
+                    <div class="metric-unit" style="font-size: 14px;">({total_perdas_aghuse}pkt perdidos)</div>
+                </div>
+                <div class="metric-card warning">
+                    <div class="metric-label">Horários com Perda (Rede Externa)</div>
+                    <div class="metric-value">{horarios_perda_externo}</div>
+                    <div class="metric-unit" style="font-size: 14px;">({total_perdas_externo}pkt perdidos)</div>
                 </div>
                 <div class="metric-card danger">
-                    <div class="metric-label">Testes com Perda</div>
-                    <div class="metric-value">{data['testes_com_perda']}</div>
+                    <div class="metric-label">Total de Testes</div>
+                    <div class="metric-value">{data['total_testes']}</div>
                 </div>
             </div>
 
@@ -557,21 +812,21 @@ def generate_html_semanal(data, output_path):
                 </div>
 
                 <div class="chart-container">
-                    <div class="chart-title">Evolução da Latência por Dia</div>
+                    <div class="chart-title">Evolução da Latência por Dia - AGHUSE vs Rede Externa</div>
                     <div class="chart-wrapper">
                         <canvas id="latDiaChart"></canvas>
                     </div>
                 </div>
 
                 <div class="chart-container">
-                    <div class="chart-title">Latência Média por Horário (Todo o Período)</div>
+                    <div class="chart-title">Latência Média por Horário - AGHUSE vs Rede Externa (Todo o Período)</div>
                     <div class="chart-wrapper">
                         <canvas id="latHoraChart"></canvas>
                     </div>
                 </div>
 
                 <div class="chart-container">
-                    <div class="chart-title">Perdas por Horário</div>
+                    <div class="chart-title">Perdas por Horário - AGHUSE vs Rede Externa</div>
                     <div class="chart-wrapper">
                         <canvas id="perdasChart"></canvas>
                     </div>
@@ -581,14 +836,14 @@ def generate_html_semanal(data, output_path):
             <!-- Aba 2: Análise Avançada -->
             <div class="tab-content" id="analise-avancada">
                 <div class="chart-container">
-                    <div class="chart-title">Score de Qualidade por Horário (0-10)</div>
+                    <div class="chart-title">Score de Qualidade por Horário - AGHUSE vs Rede Externa (0-10)</div>
                     <div class="chart-wrapper">
                         <canvas id="scoresChart"></canvas>
                     </div>
                 </div>
 
                 <div class="chart-container">
-                    <div class="chart-title">Distribuição de Latência</div>
+                    <div class="chart-title">Distribuição de Latência - AGHUSE vs Rede Externa</div>
                     <div class="chart-wrapper">
                         <canvas id="distribuicaoChart"></canvas>
                     </div>
@@ -685,65 +940,106 @@ def generate_html_semanal(data, output_path):
             type: 'bar',
             data: {{
                 labels: {json.dumps(dias_labels)},
-                datasets: [{{
-                    label: 'Latência (ms)',
-                    data: {json.dumps(dias_lat)},
-                    backgroundColor: '#3498db',
-                    borderWidth: 0
-                }}]
+                datasets: [
+                    {{
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: {json.dumps(dias_lat)},
+                        backgroundColor: '#3498db',
+                        borderWidth: 0
+                    }},
+                    {{
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: {json.dumps(dias_lat_externo)},
+                        backgroundColor: '#e74c3c',
+                        borderWidth: 0
+                    }}
+                ]
             }},
             options: {{
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {{ legend: {{ display: false }} }},
+                plugins: {{
+                    legend: {{
+                        display: true,
+                        position: 'top'
+                    }}
+                }},
                 scales: {{ y: {{ beginAtZero: true }} }}
             }}
         }});
 
-        // Gráfico de Latência por Horário
+        // Gráfico de Latência por Horário - Comparativo AGHUSE vs Rede Externa
         new Chart(document.getElementById('latHoraChart'), {{
             type: 'line',
             data: {{
                 labels: {json.dumps(horas_labels)},
-                datasets: [{{
-                    label: 'Latência (ms)',
-                    data: {json.dumps(horas_lat)},
-                    borderColor: '#3498db',
-                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.3
-                }}]
+                datasets: [
+                    {{
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: {json.dumps(horas_lat)},
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }},
+                    {{
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: {json.dumps(horas_lat_externo)},
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }}
+                ]
             }},
             options: {{
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {{ legend: {{ display: false }} }},
+                plugins: {{
+                    legend: {{
+                        display: true,
+                        position: 'top'
+                    }}
+                }},
                 scales: {{ y: {{ beginAtZero: true }} }}
             }}
         }});
 
-        // Gráfico de Perdas por Horário
+        // Gráfico de Perdas por Horário - Comparativo AGHUSE vs Rede Externa
         new Chart(document.getElementById('perdasChart'), {{
             type: 'bar',
             data: {{
                 labels: {json.dumps(horas_labels)},
-                datasets: [{{
-                    label: 'Perdas',
-                    data: {json.dumps(horas_perdas)},
-                    backgroundColor: function(context) {{
-                        const value = context.parsed.y;
-                        if (value === 0) return '#95a5a6';
-                        if (value <= 5) return '#f39c12';
-                        return '#e74c3c';
+                datasets: [
+                    {{
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: {json.dumps(horas_perdas)},
+                        backgroundColor: '#3498db',
+                        borderWidth: 0
                     }},
-                    borderWidth: 0
-                }}]
+                    {{
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: {json.dumps(horas_perdas_externo)},
+                        backgroundColor: '#e74c3c',
+                        borderWidth: 0
+                    }}
+                ]
             }},
             options: {{
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {{ legend: {{ display: false }} }},
+                plugins: {{
+                    legend: {{
+                        display: true,
+                        position: 'top'
+                    }}
+                }},
                 scales: {{ y: {{ beginAtZero: true, ticks: {{ stepSize: 1 }} }} }}
             }}
         }});
@@ -757,25 +1053,29 @@ def generate_html_semanal(data, output_path):
             type: 'bar',
             data: {{
                 labels: {json.dumps(scores_labels)},
-                datasets: [{{
-                    label: 'Score (0-10)',
-                    data: {json.dumps(scores_horas)},
-                    backgroundColor: function(context) {{
-                        const value = context.parsed.y;
-                        if (value >= 8.5) return '#27ae60';
-                        if (value >= 7.0) return '#3498db';
-                        if (value >= 5.5) return '#f39c12';
-                        if (value >= 4.0) return '#e67e22';
-                        return '#e74c3c';
+                datasets: [
+                    {{
+                        label: 'Score AGHUSE',
+                        data: {json.dumps(scores_horas_aghuse)},
+                        backgroundColor: '#FF8C00',
+                        borderWidth: 0
                     }},
-                    borderWidth: 0
-                }}]
+                    {{
+                        label: 'Score Rede Externa',
+                        data: {json.dumps(scores_horas_externo)},
+                        backgroundColor: '#DC143C',
+                        borderWidth: 0
+                    }}
+                ]
             }},
             options: {{
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {{
-                    legend: {{ display: false }},
+                    legend: {{
+                        display: true,
+                        position: 'top'
+                    }},
                     tooltip: {{
                         callbacks: {{
                             label: function(context) {{
@@ -785,7 +1085,7 @@ def generate_html_semanal(data, output_path):
                                 else if (score >= 7.0) classificacao = 'Muito Bom';
                                 else if (score >= 5.5) classificacao = 'Bom';
                                 else if (score >= 4.0) classificacao = 'Regular';
-                                return 'Score: ' + score.toFixed(1) + ' (' + classificacao + ')';
+                                return context.dataset.label + ': ' + score.toFixed(1) + ' (' + classificacao + ')';
                             }}
                         }}
                     }}
@@ -834,14 +1134,14 @@ def generate_html_semanal(data, output_path):
             }}
         }});
 
-        // Gráfico de Tendências (Evolução Diária com Regressão e Previsão)
+        // Gráfico de Tendências (Evolução Diária com Regressão e Previsão) - AGHUSE vs Rede Externa
         new Chart(document.getElementById('regressaoChart'), {{
             type: 'line',
             data: {{
                 labels: {json.dumps(tendencia_labels)},
                 datasets: [
                     {{
-                        label: 'Latência Real',
+                        label: 'AGHUSE - Latência Real',
                         data: {json.dumps(tendencia_real)},
                         borderColor: '#3498db',
                         backgroundColor: 'rgba(52, 152, 219, 0.1)',
@@ -1095,15 +1395,26 @@ def generate_html_simple(md_path, output_path):
 def generate_html_report(data, output_path):
     """Gera relatório HTML com design limpo e profissional"""
 
-    # Preparar dados para gráficos
+    # Preparar dados para gráficos - AGHUSE e Rede Externa
     horas = [d['hora'] for d in data['desempenho']]
     latencias = [d['latencia'] for d in data['desempenho']]
+    latencias_externo = [d.get('latencia_externo', 0) for d in data['desempenho']]
     perdas = [d['perdas'] for d in data['desempenho']]
+    perdas_externo = [d.get('perdas_externo', 0) for d in data['desempenho']]
 
-    # Calcular estatísticas
+    # Calcular estatísticas - AGHUSE
     lat_media = sum(latencias) / len(latencias) if latencias else 0
     lat_max = max(latencias) if latencias else 0
     total_perdas = sum(perdas)
+
+    # Calcular estatísticas - Rede Externa
+    lat_media_externo = sum([l for l in latencias_externo if l > 0]) / len([l for l in latencias_externo if l > 0]) if any(l > 0 for l in latencias_externo) else 0
+    lat_max_externo = max(latencias_externo) if latencias_externo else 0
+    total_perdas_externo = sum(perdas_externo)
+
+    # Contar horários com perda para cada destino
+    horarios_perda_aghuse = sum(1 for p in perdas if p > 0)
+    horarios_perda_externo = sum(1 for p in perdas_externo if p > 0)
 
     html_content = f'''<!DOCTYPE html>
 <html lang="pt-BR">
@@ -1158,9 +1469,27 @@ def generate_html_report(data, output_path):
 
         .metrics-row {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
             margin-bottom: 30px;
+        }}
+
+        @media (min-width: 1200px) {{
+            .metrics-row {{
+                grid-template-columns: repeat(3, 1fr);
+            }}
+        }}
+
+        @media (max-width: 768px) {{
+            .metrics-row {{
+                grid-template-columns: repeat(2, 1fr);
+            }}
+        }}
+
+        @media (max-width: 480px) {{
+            .metrics-row {{
+                grid-template-columns: 1fr;
+            }}
         }}
 
         .metric-card {{
@@ -1344,6 +1673,34 @@ def generate_html_report(data, output_path):
                 height: 250px;
             }}
         }}
+
+        .btn-voltar {{
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin: 20px 0;
+        }}
+
+        .btn-voltar:hover {{
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }}
+
+        .btn-voltar::before {{
+            content: '← ';
+        }}
+
+        .back-button-container {{
+            text-align: center;
+            padding: 20px 40px 0;
+        }}
     </style>
 </head>
 <body>
@@ -1351,6 +1708,10 @@ def generate_html_report(data, output_path):
         <div class="header">
             <h1>Relatório de Conectividade AGHUSE</h1>
             <div class="subtitle">Análise do dia {data['data']}</div>
+        </div>
+
+        <div class="back-button-container">
+            <a href="../index.html" class="btn-voltar">Voltar para Central de Relatórios</a>
         </div>
 
         <div class="content">
@@ -1362,15 +1723,27 @@ def generate_html_report(data, output_path):
                 </div>
 
                 <div class="metric-card primary">
-                    <div class="metric-label">Latência Média</div>
+                    <div class="metric-label">Latência Média (AGHUSE)</div>
                     <div class="metric-value">{lat_media:.1f}<span class="metric-unit">ms</span></div>
                     <div class="metric-status">Máxima: {lat_max:.1f}ms</div>
                 </div>
 
+                <div class="metric-card primary">
+                    <div class="metric-label">Latência Média (Rede Externa)</div>
+                    <div class="metric-value">{lat_media_externo:.1f}<span class="metric-unit">ms</span></div>
+                    <div class="metric-status">Máxima: {lat_max_externo:.1f}ms</div>
+                </div>
+
                 <div class="metric-card warning">
-                    <div class="metric-label">Horários com Perda</div>
-                    <div class="metric-value">{data['horarios_perda']}</div>
-                    <div class="metric-status">Total de {total_perdas} perda(s)</div>
+                    <div class="metric-label">Horários com Perda (AGHUSE)</div>
+                    <div class="metric-value">{horarios_perda_aghuse}</div>
+                    <div class="metric-status">Total de {total_perdas}pkt perdidos</div>
+                </div>
+
+                <div class="metric-card warning">
+                    <div class="metric-label">Horários com Perda (Rede Externa)</div>
+                    <div class="metric-value">{horarios_perda_externo}</div>
+                    <div class="metric-status">Total de {total_perdas_externo}pkt perdidos</div>
                 </div>
 
                 <div class="metric-card danger">
@@ -1382,14 +1755,14 @@ def generate_html_report(data, output_path):
 
             <div class="charts-section">
                 <div class="chart-container">
-                    <div class="chart-title">Latência por Horário</div>
+                    <div class="chart-title">Latência por Horário - AGHUSE vs Rede Externa</div>
                     <div class="chart-wrapper large">
                         <canvas id="latencyChart"></canvas>
                     </div>
                 </div>
 
                 <div class="chart-container">
-                    <div class="chart-title">Perdas de Conexão por Horário</div>
+                    <div class="chart-title">Perdas de Conexão por Horário - AGHUSE vs Rede Externa</div>
                     <div class="chart-wrapper">
                         <canvas id="lossChart"></canvas>
                     </div>
@@ -1397,18 +1770,22 @@ def generate_html_report(data, output_path):
             </div>
 
             <div class="table-section">
-                <div class="section-title">Desempenho Detalhado por Horário</div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Horário</th>
-                            <th>Latência Média</th>
-                            <th>Mín - Máx</th>
-                            <th>Status</th>
-                            <th>Perdas</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                <div class="section-title">Desempenho Detalhado por Horário - AGHUSE vs Rede Externa</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <!-- Tabela AGHUSE -->
+                    <div>
+                        <h3 style="color: #3498db; font-size: 16px; margin-bottom: 10px; text-align: center;">AGHUSE (10.252.17.132)</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Horário</th>
+                                    <th>Latência Média</th>
+                                    <th>Mín - Máx</th>
+                                    <th>Status</th>
+                                    <th>Perdas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
 '''
 
     for item in data['desempenho']:
@@ -1420,21 +1797,75 @@ def generate_html_report(data, output_path):
         elif item['status'] == 'Ruim':
             status_class = 'status-ruim'
 
-        perda_text = f'<span class="perda-indicator">{item["perdas"]}</span>' if item['perdas'] > 0 else '0'
+        perda_aghuse = f'<span class="perda-indicator">{item["perdas"]}</span>' if item['perdas'] > 0 else '0'
 
         html_content += f'''
-                        <tr>
-                            <td>{item['hora']:02d}h</td>
-                            <td>{item['latencia']:.1f} ms</td>
-                            <td>{item['lat_min']:.0f} - {item['lat_max']:.0f} ms</td>
-                            <td><span class="status-badge {status_class}">{item['status']}</span></td>
-                            <td>{perda_text}</td>
-                        </tr>
+                                <tr>
+                                    <td>{item['hora']:02d}h</td>
+                                    <td>{item['latencia']:.1f} ms</td>
+                                    <td>{item['lat_min']:.0f} - {item['lat_max']:.0f} ms</td>
+                                    <td><span class="status-badge {status_class}">{item['status']}</span></td>
+                                    <td>{perda_aghuse}</td>
+                                </tr>
 '''
 
     html_content += f'''
-                    </tbody>
-                </table>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Tabela Rede Externa -->
+                    <div>
+                        <h3 style="color: #e74c3c; font-size: 16px; margin-bottom: 10px; text-align: center;">Rede Externa (8.8.8.8)</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Horário</th>
+                                    <th>Latência Média</th>
+                                    <th>Mín - Máx</th>
+                                    <th>Status</th>
+                                    <th>Perdas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+'''
+
+    for item in data['desempenho']:
+        status_class = 'status-otimo'
+        if item['status'] == 'Bom':
+            status_class = 'status-bom'
+        elif item['status'] == 'Regular':
+            status_class = 'status-regular'
+        elif item['status'] == 'Ruim':
+            status_class = 'status-ruim'
+
+        perda_externo = f'<span class="perda-indicator">{item.get("perdas_externo", 0)}</span>' if item.get('perdas_externo', 0) > 0 else '0'
+
+        lat_externo = item.get('latencia_externo', 0)
+        lat_min_externo = item.get('lat_min_externo', 0)
+        lat_max_externo = item.get('lat_max_externo', 0)
+
+        if lat_externo > 0:
+            lat_externo_text = f'{lat_externo:.1f} ms'
+            lat_range_text = f'{lat_min_externo:.0f} - {lat_max_externo:.0f} ms'
+        else:
+            lat_externo_text = 'N/A'
+            lat_range_text = 'N/A'
+
+        html_content += f'''
+                                <tr>
+                                    <td>{item['hora']:02d}h</td>
+                                    <td>{lat_externo_text}</td>
+                                    <td>{lat_range_text}</td>
+                                    <td><span class="status-badge {status_class}">{item['status']}</span></td>
+                                    <td>{perda_externo}</td>
+                                </tr>
+'''
+
+    html_content += f'''
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1443,30 +1874,44 @@ def generate_html_report(data, output_path):
         Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
         Chart.defaults.color = '#7f8c8d';
 
-        // Gráfico de Latência
+        // Gráfico de Latência - Comparativo AGHUSE vs Rede Externa
         const latencyCtx = document.getElementById('latencyChart').getContext('2d');
         new Chart(latencyCtx, {{
             type: 'line',
             data: {{
                 labels: {json.dumps([f'{h}h' for h in horas])},
-                datasets: [{{
-                    label: 'Latência (ms)',
-                    data: {json.dumps(latencias)},
-                    borderColor: '#3498db',
-                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.3,
-                    pointRadius: 3,
-                    pointHoverRadius: 5
-                }}]
+                datasets: [
+                    {{
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: {json.dumps(latencias)},
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }},
+                    {{
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: {json.dumps(latencias_externo)},
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }}
+                ]
             }},
             options: {{
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {{
                     legend: {{
-                        display: false
+                        display: true,
+                        position: 'top'
                     }},
                     tooltip: {{
                         backgroundColor: 'rgba(44, 62, 80, 0.9)',
@@ -1500,30 +1945,34 @@ def generate_html_report(data, output_path):
             }}
         }});
 
-        // Gráfico de Perdas
+        // Gráfico de Perdas - Comparativo AGHUSE vs Rede Externa
         const lossCtx = document.getElementById('lossChart').getContext('2d');
         new Chart(lossCtx, {{
             type: 'bar',
             data: {{
                 labels: {json.dumps([f'{h}h' for h in horas])},
-                datasets: [{{
-                    label: 'Perdas',
-                    data: {json.dumps(perdas)},
-                    backgroundColor: function(context) {{
-                        const value = context.parsed.y;
-                        if (value === 0) return '#95a5a6';
-                        if (value <= 2) return '#f39c12';
-                        return '#e74c3c';
+                datasets: [
+                    {{
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: {json.dumps(perdas)},
+                        backgroundColor: '#3498db',
+                        borderWidth: 0
                     }},
-                    borderWidth: 0
-                }}]
+                    {{
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: {json.dumps(perdas_externo)},
+                        backgroundColor: '#e74c3c',
+                        borderWidth: 0
+                    }}
+                ]
             }},
             options: {{
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {{
                     legend: {{
-                        display: false
+                        display: true,
+                        position: 'top'
                     }},
                     tooltip: {{
                         backgroundColor: 'rgba(44, 62, 80, 0.9)',
@@ -1594,14 +2043,12 @@ if __name__ == '__main__':
         else:
             print(f"[ERRO] Arquivo nao encontrado: {relatorio_file}")
     else:
-        # Processar todos os relatórios (diários, semanal e geral)
+        # Processar todos os relatórios (diários, semanais e geral)
         relatorios_diarios = sorted(relatorios_dir.glob('RELATORIO_DIARIO_*.md'), reverse=True)
-        relatorio_semanal = relatorios_dir / 'RELATORIO_SEMANAL.md'
+        relatorios_semanais = sorted(relatorios_dir.glob('RELATORIO_SEMANAL_*.md'), reverse=True)
         relatorio_geral = relatorios_dir / 'RELATORIO_GERAL.md'
 
-        todos_relatorios = list(relatorios_diarios)
-        if relatorio_semanal.exists():
-            todos_relatorios.append(relatorio_semanal)
+        todos_relatorios = list(relatorios_diarios) + list(relatorios_semanais)
         if relatorio_geral.exists():
             todos_relatorios.append(relatorio_geral)
 
@@ -1632,3 +2079,12 @@ if __name__ == '__main__':
 
             print(f"\nProcessamento concluido! {len(todos_relatorios)} relatorios convertidos.")
             print(f"Relatorios HTML salvos em: {output_dir.absolute()}")
+
+            # Atualizar index.html com lista de relatórios
+            print(f"\nAtualizando index.html...")
+            try:
+                import subprocess
+                subprocess.run(['python', 'scripts/atualizar_index_completo.py'], check=True)
+                print("[OK] index.html atualizado com sucesso")
+            except Exception as e:
+                print(f"[AVISO] Erro ao atualizar index.html: {e}")

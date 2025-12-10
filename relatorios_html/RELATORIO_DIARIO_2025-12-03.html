@@ -51,9 +51,27 @@
 
         .metrics-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
             margin-bottom: 30px;
+        }
+
+        @media (min-width: 1200px) {
+            .metrics-row {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .metrics-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .metrics-row {
+                grid-template-columns: 1fr;
+            }
         }
 
         .metric-card {
@@ -237,6 +255,34 @@
                 height: 250px;
             }
         }
+
+        .btn-voltar {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin: 20px 0;
+        }
+
+        .btn-voltar:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-voltar::before {
+            content: '← ';
+        }
+
+        .back-button-container {
+            text-align: center;
+            padding: 20px 40px 0;
+        }
     </style>
 </head>
 <body>
@@ -244,6 +290,10 @@
         <div class="header">
             <h1>Relatório de Conectividade AGHUSE</h1>
             <div class="subtitle">Análise do dia 03/12/2025</div>
+        </div>
+
+        <div class="back-button-container">
+            <a href="../index.html" class="btn-voltar">Voltar para Central de Relatórios</a>
         </div>
 
         <div class="content">
@@ -255,15 +305,27 @@
                 </div>
 
                 <div class="metric-card primary">
-                    <div class="metric-label">Latência Média</div>
-                    <div class="metric-value">8.7<span class="metric-unit">ms</span></div>
-                    <div class="metric-status">Máxima: 11.0ms</div>
+                    <div class="metric-label">Latência Média (AGHUSE)</div>
+                    <div class="metric-value">8.0<span class="metric-unit">ms</span></div>
+                    <div class="metric-status">Máxima: 9.0ms</div>
+                </div>
+
+                <div class="metric-card primary">
+                    <div class="metric-label">Latência Média (Rede Externa)</div>
+                    <div class="metric-value">45.0<span class="metric-unit">ms</span></div>
+                    <div class="metric-status">Máxima: 45.0ms</div>
                 </div>
 
                 <div class="metric-card warning">
-                    <div class="metric-label">Horários com Perda</div>
-                    <div class="metric-value">2</div>
-                    <div class="metric-status">Total de 2 perda(s)</div>
+                    <div class="metric-label">Horários com Perda (AGHUSE)</div>
+                    <div class="metric-value">1</div>
+                    <div class="metric-status">Total de 1pkt perdidos</div>
+                </div>
+
+                <div class="metric-card warning">
+                    <div class="metric-label">Horários com Perda (Rede Externa)</div>
+                    <div class="metric-value">1</div>
+                    <div class="metric-status">Total de 1pkt perdidos</div>
                 </div>
 
                 <div class="metric-card danger">
@@ -275,14 +337,14 @@
 
             <div class="charts-section">
                 <div class="chart-container">
-                    <div class="chart-title">Latência por Horário</div>
+                    <div class="chart-title">Latência por Horário - AGHUSE vs Rede Externa</div>
                     <div class="chart-wrapper large">
                         <canvas id="latencyChart"></canvas>
                     </div>
                 </div>
 
                 <div class="chart-container">
-                    <div class="chart-title">Perdas de Conexão por Horário</div>
+                    <div class="chart-title">Perdas de Conexão por Horário - AGHUSE vs Rede Externa</div>
                     <div class="chart-wrapper">
                         <canvas id="lossChart"></canvas>
                     </div>
@@ -290,45 +352,93 @@
             </div>
 
             <div class="table-section">
-                <div class="section-title">Desempenho Detalhado por Horário</div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Horário</th>
-                            <th>Latência Média</th>
-                            <th>Mín - Máx</th>
-                            <th>Status</th>
-                            <th>Perdas</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                <div class="section-title">Desempenho Detalhado por Horário - AGHUSE vs Rede Externa</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <!-- Tabela AGHUSE -->
+                    <div>
+                        <h3 style="color: #3498db; font-size: 16px; margin-bottom: 10px; text-align: center;">AGHUSE (10.252.17.132)</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Horário</th>
+                                    <th>Latência Média</th>
+                                    <th>Mín - Máx</th>
+                                    <th>Status</th>
+                                    <th>Perdas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
 
-                        <tr>
-                            <td>21h</td>
-                            <td>11.0 ms</td>
-                            <td>11 - 11 ms</td>
-                            <td><span class="status-badge status-bom">Bom</span></td>
-                            <td>0</td>
-                        </tr>
+                                <tr>
+                                    <td>21h</td>
+                                    <td>9.0 ms</td>
+                                    <td>9 - 9 ms</td>
+                                    <td><span class="status-badge status-otimo">Ótimo</span></td>
+                                    <td>0</td>
+                                </tr>
 
-                        <tr>
-                            <td>22h</td>
-                            <td>7.4 ms</td>
-                            <td>7 - 9 ms</td>
-                            <td><span class="status-badge status-otimo">Ótimo</span></td>
-                            <td><span class="perda-indicator">2</span></td>
-                        </tr>
+                                <tr>
+                                    <td>22h</td>
+                                    <td>7.3 ms</td>
+                                    <td>7 - 8 ms</td>
+                                    <td><span class="status-badge status-otimo">Ótimo</span></td>
+                                    <td>0</td>
+                                </tr>
 
-                        <tr>
-                            <td>23h</td>
-                            <td>7.8 ms</td>
-                            <td>7 - 8 ms</td>
-                            <td><span class="status-badge status-otimo">Ótimo</span></td>
-                            <td>0</td>
-                        </tr>
+                                <tr>
+                                    <td>23h</td>
+                                    <td>7.6 ms</td>
+                                    <td>7 - 9 ms</td>
+                                    <td><span class="status-badge status-otimo">Ótimo</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
 
-                    </tbody>
-                </table>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Tabela Rede Externa -->
+                    <div>
+                        <h3 style="color: #e74c3c; font-size: 16px; margin-bottom: 10px; text-align: center;">Rede Externa (8.8.8.8)</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Horário</th>
+                                    <th>Latência Média</th>
+                                    <th>Mín - Máx</th>
+                                    <th>Status</th>
+                                    <th>Perdas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                                <tr>
+                                    <td>21h</td>
+                                    <td>45.0 ms</td>
+                                    <td>45 - 45 ms</td>
+                                    <td><span class="status-badge status-otimo">Ótimo</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>22h</td>
+                                    <td>45.0 ms</td>
+                                    <td>45 - 45 ms</td>
+                                    <td><span class="status-badge status-otimo">Ótimo</span></td>
+                                    <td>0</td>
+                                </tr>
+
+                                <tr>
+                                    <td>23h</td>
+                                    <td>45.0 ms</td>
+                                    <td>45 - 45 ms</td>
+                                    <td><span class="status-badge status-otimo">Ótimo</span></td>
+                                    <td><span class="perda-indicator">1</span></td>
+                                </tr>
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -337,30 +447,44 @@
         Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
         Chart.defaults.color = '#7f8c8d';
 
-        // Gráfico de Latência
+        // Gráfico de Latência - Comparativo AGHUSE vs Rede Externa
         const latencyCtx = document.getElementById('latencyChart').getContext('2d');
         new Chart(latencyCtx, {
             type: 'line',
             data: {
                 labels: ["21h", "22h", "23h"],
-                datasets: [{
-                    label: 'Latência (ms)',
-                    data: [11.0, 7.4, 7.8],
-                    borderColor: '#3498db',
-                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.3,
-                    pointRadius: 3,
-                    pointHoverRadius: 5
-                }]
+                datasets: [
+                    {
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: [9.0, 7.3, 7.6],
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    },
+                    {
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: [45.0, 45.0, 45.0],
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        display: false
+                        display: true,
+                        position: 'top'
                     },
                     tooltip: {
                         backgroundColor: 'rgba(44, 62, 80, 0.9)',
@@ -394,30 +518,34 @@
             }
         });
 
-        // Gráfico de Perdas
+        // Gráfico de Perdas - Comparativo AGHUSE vs Rede Externa
         const lossCtx = document.getElementById('lossChart').getContext('2d');
         new Chart(lossCtx, {
             type: 'bar',
             data: {
                 labels: ["21h", "22h", "23h"],
-                datasets: [{
-                    label: 'Perdas',
-                    data: [0, 2, 0],
-                    backgroundColor: function(context) {
-                        const value = context.parsed.y;
-                        if (value === 0) return '#95a5a6';
-                        if (value <= 2) return '#f39c12';
-                        return '#e74c3c';
+                datasets: [
+                    {
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: [0, 0, 1],
+                        backgroundColor: '#3498db',
+                        borderWidth: 0
                     },
-                    borderWidth: 0
-                }]
+                    {
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: [0, 0, 1],
+                        backgroundColor: '#e74c3c',
+                        borderWidth: 0
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        display: false
+                        display: true,
+                        position: 'top'
                     },
                     tooltip: {
                         backgroundColor: 'rgba(44, 62, 80, 0.9)',
