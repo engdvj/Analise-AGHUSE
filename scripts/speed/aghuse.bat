@@ -45,8 +45,10 @@ echo AGUARDE, EXECUTANDO TESTES...
 echo.
 
 rem ============================================
-rem 1 - CABEÇALHO PADRONIZADO
+rem 1 - IDENTIFICACAO DO SISTEMA
 rem ============================================
+echo 1/10 .... Coletando identificacao do sistema
+
 > "%ARQ%" (
     echo =========================================================
     echo TESTE DE CONECTIVIDADE - AGHUSE
@@ -55,9 +57,12 @@ rem ============================================
     echo HORA_TESTE : %HORA%:%MIN%:%SEG%
     echo =========================================================
     echo.
-    echo [1/7] INFORMACOES GERAIS
-    echo DATA_TESTE : %DIA%/%MES%/%ANO%
-    echo HORA_TESTE : %HORA%:%MIN%:%SEG%
+    echo [1/10] IDENTIFICACAO DO SISTEMA
+    echo ---------------------------------------------------------
+)
+hostname >> "%ARQ%"
+whoami >> "%ARQ%"
+>> "%ARQ%" (
     echo ---------------------------------------------------------
     echo.
 )
@@ -65,10 +70,10 @@ rem ============================================
 rem ============================================
 rem 2 - IPCONFIG /ALL
 rem ============================================
-echo 2/7 ..... Coletando configuracao de rede (ipconfig /all)
+echo 2/10 .... Coletando configuracao de rede (ipconfig /all)
 
 >> "%ARQ%" (
-    echo [2/7] IPCONFIG /ALL
+    echo [2/10] CONFIGURACAO DE REDE - IPCONFIG /ALL
     echo ---------------------------------------------------------
 )
 ipconfig /all >> "%ARQ%"
@@ -79,12 +84,91 @@ ipconfig /all >> "%ARQ%"
 )
 
 rem ============================================
-rem 3 - PING aghuse.saude.ba.gov.br
+rem 3 - EXTRAIR E TESTAR GATEWAY PADRAO
 rem ============================================
-echo 3/7 ..... Testando ping para aghuse.saude.ba.gov.br
+echo 3/10 .... Testando conectividade com gateway padrao
 
 >> "%ARQ%" (
-    echo [3/7] PING aghuse.saude.ba.gov.br -n 20
+    echo [3/10] PING GATEWAY PADRAO -n 10
+    echo ---------------------------------------------------------
+)
+
+rem Extrai o gateway padrão do ipconfig
+for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /C:"Gateway"') do (
+    set "GATEWAY=%%a"
+    goto :gateway_found
+)
+:gateway_found
+set "GATEWAY=%GATEWAY: =%"
+
+if not "%GATEWAY%"=="" (
+    echo GATEWAY: %GATEWAY% >> "%ARQ%"
+    ping %GATEWAY% -n 10 >> "%ARQ%"
+) else (
+    echo Gateway nao detectado >> "%ARQ%"
+)
+
+>> "%ARQ%" (
+    echo.
+    echo ---------------------------------------------------------
+    echo.
+)
+
+rem ============================================
+rem 4 - PING interno AGHUSE (10.252.17.132)
+rem ============================================
+echo 4/10 .... Testando ping interno AGHUSE (10.252.17.132)
+
+>> "%ARQ%" (
+    echo [4/10] PING INTERNO AGHUSE - 10.252.17.132 -n 10
+    echo ---------------------------------------------------------
+)
+ping 10.252.17.132 -n 10 >> "%ARQ%"
+>> "%ARQ%" (
+    echo.
+    echo ---------------------------------------------------------
+    echo.
+)
+
+rem ============================================
+rem 5 - PING externo Google DNS (8.8.8.8)
+rem ============================================
+echo 5/10 .... Testando ping externo Google DNS (8.8.8.8)
+
+>> "%ARQ%" (
+    echo [5/10] PING EXTERNO GOOGLE DNS - 8.8.8.8 -n 10
+    echo ---------------------------------------------------------
+)
+ping 8.8.8.8 -n 10 >> "%ARQ%"
+>> "%ARQ%" (
+    echo.
+    echo ---------------------------------------------------------
+    echo.
+)
+
+rem ============================================
+rem 6 - NSLOOKUP aghuse.saude.ba.gov.br
+rem ============================================
+echo 6/10 .... Testando resolucao DNS do AGHUSE
+
+>> "%ARQ%" (
+    echo [6/10] NSLOOKUP aghuse.saude.ba.gov.br
+    echo ---------------------------------------------------------
+)
+nslookup aghuse.saude.ba.gov.br >> "%ARQ%"
+>> "%ARQ%" (
+    echo.
+    echo ---------------------------------------------------------
+    echo.
+)
+
+rem ============================================
+rem 7 - PING aghuse.saude.ba.gov.br
+rem ============================================
+echo 7/10 .... Testando ping para aghuse.saude.ba.gov.br
+
+>> "%ARQ%" (
+    echo [7/10] PING aghuse.saude.ba.gov.br -n 20
     echo ---------------------------------------------------------
 )
 ping aghuse.saude.ba.gov.br -n 20 >> "%ARQ%"
@@ -95,12 +179,12 @@ ping aghuse.saude.ba.gov.br -n 20 >> "%ARQ%"
 )
 
 rem ============================================
-rem 4 - TRACERT aghuse.saude.ba.gov.br
+rem 8 - TRACERT aghuse.saude.ba.gov.br
 rem ============================================
-echo 4/7 ..... Executando tracert para aghuse.saude.ba.gov.br
+echo 8/10 .... Executando tracert para aghuse.saude.ba.gov.br
 
 >> "%ARQ%" (
-    echo [4/7] TRACERT -d aghuse.saude.ba.gov.br
+    echo [8/10] TRACERT -d aghuse.saude.ba.gov.br
     echo ---------------------------------------------------------
 )
 tracert -d aghuse.saude.ba.gov.br >> "%ARQ%"
@@ -111,70 +195,37 @@ tracert -d aghuse.saude.ba.gov.br >> "%ARQ%"
 )
 
 rem ============================================
-rem 5 - PING interno (10.252.17.132)
+rem 9 - FINALIZACAO DOS TESTES DE REDE
 rem ============================================
-echo 5/7 ..... Testando ping interno (10.252.17.132)
-
->> "%ARQ%" (
-    echo [5/7] PING 10.252.17.132 -n 20
-    echo ---------------------------------------------------------
-)
-ping 10.252.17.132 -n 20 >> "%ARQ%"
->> "%ARQ%" (
-    echo.
-    echo ---------------------------------------------------------
-    echo.
-)
-
-rem ============================================
-rem 6 - PING externo (8.8.8.8)
-rem ============================================
-echo 6/7 ..... Testando ping externo (8.8.8.8)
-
->> "%ARQ%" (
-    echo [6/7] PING 8.8.8.8 -n 20
-    echo ---------------------------------------------------------
-)
-ping 8.8.8.8 -n 20 >> "%ARQ%"
->> "%ARQ%" (
-    echo.
-    echo ---------------------------------------------------------
-    echo.
-)
-
-rem ============================================
-rem 7 - FINALIZACAO
-rem ============================================
-echo 7/7 ..... Finalizando
-
->> "%ARQ%" (
-    echo [7/7] FIM DO TESTE DE CONECTIVIDADE
-    echo =========================================================
-    echo.
-)
-
 echo.
-echo TESTE DE CONECTIVIDADE FINALIZADO.
+echo TESTES DE CONECTIVIDADE FINALIZADOS.
 echo Arquivo gerado em:
 echo   %ARQ%
 echo.
 
 rem ============================================
-rem 8 - CHAMA SCRIPT PYTHON (MESMA PASTA)
+rem 10 - CHAMA SCRIPT PYTHON (TESTES DE VELOCIDADE)
 rem ============================================
+echo.
 echo ===============================================
-echo  INICIANDO TESTES DE VELOCIDADE (PYTHON)
-echo  Arquivo: openspeedtest_log.py
-echo  Pasta : %BASE_DIR%
+echo  INICIANDO TESTES DE VELOCIDADE
+echo  Script: openspeedtest_log.py
 echo ===============================================
 echo.
 
 cd /d "%BASE_DIR%"
 python openspeedtest_log.py "%ARQ%"
 
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo [AVISO] Erro ao executar testes de velocidade.
+    echo.
+)
+
 echo.
 echo ===============================================
-echo  FIM DE TODOS OS TESTES
+echo  TODOS OS TESTES FINALIZADOS
+echo  Arquivo: %ARQ%
 echo ===============================================
 echo.
 

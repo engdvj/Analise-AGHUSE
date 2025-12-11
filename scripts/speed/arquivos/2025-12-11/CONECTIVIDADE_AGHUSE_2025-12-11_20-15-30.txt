@@ -1,0 +1,233 @@
+=========================================================
+TESTE DE CONECTIVIDADE - AGHUSE
+ID_TESTE   : 2025-12-11_20-15-30
+DATA_TESTE : 11/12/2025
+HORA_TESTE : 20:15:30
+=========================================================
+
+[1/10] IDENTIFICACAO DO SISTEMA
+---------------------------------------------------------
+TI-T02
+chvc\davi.costa
+---------------------------------------------------------
+
+[2/10] CONFIGURACAO DE REDE - IPCONFIG /ALL
+---------------------------------------------------------
+
+Configuraá∆o de IP do Windows
+
+   Nome do host. . . . . . . . . . . . . . . . : TI-T02
+   Sufixo DNS prim†rio . . . . . . . . . . . . : chvc.local
+   Tipo de n¢. . . . . . . . . . . . . . . . . : h°brido
+   Roteamento de IP ativado. . . . . . . . . . : n∆o
+   Proxy WINS ativado. . . . . . . . . . . . . : n∆o
+   Lista de pesquisa de sufixo DNS . . . . . . : chvc.local
+
+Adaptador de Rede sem Fio Wi-Fi:
+
+   Estado da m°dia. . . . . . . . . . . . . .  : m°dia desconectada
+   Sufixo DNS espec°fico de conex∆o. . . . . . : 
+   Descriá∆o . . . . . . . . . . . . . . . . . : Intel(R) Wireless-AC 9462
+   Endereáo F°sico . . . . . . . . . . . . . . : FA-1E-4D-E4-CA-90
+   DHCP Habilitado . . . . . . . . . . . . . . : Sim
+   Configuraá∆o Autom†tica Habilitada. . . . . : Sim
+
+Adaptador de Rede sem Fio Conex∆o Local* 9:
+
+   Estado da m°dia. . . . . . . . . . . . . .  : m°dia desconectada
+   Sufixo DNS espec°fico de conex∆o. . . . . . : 
+   Descriá∆o . . . . . . . . . . . . . . . . . : Microsoft Wi-Fi Direct Virtual Adapter
+   Endereáo F°sico . . . . . . . . . . . . . . : 5C-CD-5B-F2-7B-2E
+   DHCP Habilitado . . . . . . . . . . . . . . : Sim
+   Configuraá∆o Autom†tica Habilitada. . . . . : Sim
+
+Adaptador Ethernet Ethernet:
+
+   Sufixo DNS espec°fico de conex∆o. . . . . . : 
+   Descriá∆o . . . . . . . . . . . . . . . . . : Realtek PCIe GbE Family Controller
+   Endereáo F°sico . . . . . . . . . . . . . . : 1C-69-7A-E8-5D-39
+   DHCP Habilitado . . . . . . . . . . . . . . : Sim
+   Configuraá∆o Autom†tica Habilitada. . . . . : Sim
+   Endereáo IPv6 de link local . . . . . . . . : fe80::7808:3790:db18:ffec%19(Preferencial) 
+   Endereáo IPv4. . . . . . . .  . . . . . . . : 10.17.200.7(Preferencial) 
+   M†scara de Sub-rede . . . . . . . . . . . . : 255.255.254.0
+   Concess∆o Obtida. . . . . . . . . . . . . . : quinta-feira, 11 de dezembro de 2025 15:31:02
+   Concess∆o Expira. . . . . . . . . . . . . . : quinta-feira, 18 de dezembro de 2025 15:31:00
+   Gateway Padr∆o. . . . . . . . . . . . . . . : 10.17.201.254
+   Servidor DHCP . . . . . . . . . . . . . . . : 10.17.201.254
+   IAID de DHCPv6. . . . . . . . . . . . . . . : 337406330
+   DUID de Cliente DHCPv6. . . . . . . . . . . : 00-01-01-00-30-B9-37-A2-1C-69-7A-E8-5D-39
+   Servidores DNS. . . . . . . . . . . . . . . : 10.17.133.1
+                                                 10.2.8.188
+                                                 10.2.8.187
+   NetBIOS em Tcpip. . . . . . . . . . . . . . : Habilitado
+
+Adaptador Ethernet vEthernet (WSL (Hyper-V firewall)):
+
+   Sufixo DNS espec°fico de conex∆o. . . . . . : 
+   Descriá∆o . . . . . . . . . . . . . . . . . : Hyper-V Virtual Ethernet Adapter
+   Endereáo F°sico . . . . . . . . . . . . . . : 00-15-5D-BE-9D-E0
+   DHCP Habilitado . . . . . . . . . . . . . . : N∆o
+   Configuraá∆o Autom†tica Habilitada. . . . . : Sim
+   Endereáo IPv6 de link local . . . . . . . . : fe80::b19e:fe11:9bdf:3c32%25(Preferencial) 
+   Endereáo IPv4. . . . . . . .  . . . . . . . : 172.27.0.1(Preferencial) 
+   M†scara de Sub-rede . . . . . . . . . . . . : 255.255.240.0
+   Gateway Padr∆o. . . . . . . . . . . . . . . : 
+   IAID de DHCPv6. . . . . . . . . . . . . . . : 419435869
+   DUID de Cliente DHCPv6. . . . . . . . . . . : 00-01-01-00-30-B9-37-A2-1C-69-7A-E8-5D-39
+   NetBIOS em Tcpip. . . . . . . . . . . . . . : Habilitado
+
+---------------------------------------------------------
+
+[3/10] PING GATEWAY PADRAO -n 10
+---------------------------------------------------------
+GATEWAY: 10.17.201.254 
+
+Disparando 10.17.201.254 com 32 bytes de dados:
+Resposta de 10.17.201.254: bytes=32 tempo<1ms TTL=255
+Resposta de 10.17.201.254: bytes=32 tempo<1ms TTL=255
+Resposta de 10.17.201.254: bytes=32 tempo<1ms TTL=255
+Resposta de 10.17.201.254: bytes=32 tempo<1ms TTL=255
+Resposta de 10.17.201.254: bytes=32 tempo<1ms TTL=255
+Resposta de 10.17.201.254: bytes=32 tempo<1ms TTL=255
+Resposta de 10.17.201.254: bytes=32 tempo<1ms TTL=255
+Resposta de 10.17.201.254: bytes=32 tempo<1ms TTL=255
+Resposta de 10.17.201.254: bytes=32 tempo<1ms TTL=255
+Resposta de 10.17.201.254: bytes=32 tempo<1ms TTL=255
+
+Estat°sticas do Ping para 10.17.201.254:
+    Pacotes: Enviados = 10, Recebidos = 10, Perdidos = 0 (0% de
+             perda),
+Aproximar um n£mero redondo de vezes em milissegundos:
+    M°nimo = 0ms, M†ximo = 0ms, MÇdia = 0ms
+
+---------------------------------------------------------
+
+[4/10] PING INTERNO AGHUSE - 10.252.17.132 -n 10
+---------------------------------------------------------
+
+Disparando 10.252.17.132 com 32 bytes de dados:
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=10ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=14ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+
+Estat°sticas do Ping para 10.252.17.132:
+    Pacotes: Enviados = 10, Recebidos = 10, Perdidos = 0 (0% de
+             perda),
+Aproximar um n£mero redondo de vezes em milissegundos:
+    M°nimo = 8ms, M†ximo = 14ms, MÇdia = 8ms
+
+---------------------------------------------------------
+
+[5/10] PING EXTERNO GOOGLE DNS - 8.8.8.8 -n 10
+---------------------------------------------------------
+
+Disparando 8.8.8.8 com 32 bytes de dados:
+Resposta de 8.8.8.8: bytes=32 tempo=70ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=69ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=69ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=69ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=70ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=69ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=69ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=69ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=69ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=69ms TTL=114
+
+Estat°sticas do Ping para 8.8.8.8:
+    Pacotes: Enviados = 10, Recebidos = 10, Perdidos = 0 (0% de
+             perda),
+Aproximar um n£mero redondo de vezes em milissegundos:
+    M°nimo = 69ms, M†ximo = 70ms, MÇdia = 69ms
+
+---------------------------------------------------------
+
+[6/10] NSLOOKUP aghuse.saude.ba.gov.br
+---------------------------------------------------------
+Servidor:  cpd04.chvc.local
+Address:  10.17.133.1
+
+Nome:    aghuse.saude.ba.gov.br
+Address:  10.252.17.132
+
+
+---------------------------------------------------------
+
+[7/10] PING aghuse.saude.ba.gov.br -n 20
+---------------------------------------------------------
+
+Disparando aghuse.saude.ba.gov.br [10.252.17.132] com 32 bytes de dados:
+Resposta de 10.252.17.132: bytes=32 tempo=7ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=9ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=16ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=7ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=7ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=7ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=7ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=8ms TTL=59
+
+Estat°sticas do Ping para 10.252.17.132:
+    Pacotes: Enviados = 20, Recebidos = 20, Perdidos = 0 (0% de
+             perda),
+Aproximar um n£mero redondo de vezes em milissegundos:
+    M°nimo = 7ms, M†ximo = 16ms, MÇdia = 8ms
+
+---------------------------------------------------------
+
+[8/10] TRACERT -d aghuse.saude.ba.gov.br
+---------------------------------------------------------
+
+Rastreando a rota para aghuse.saude.ba.gov.br [10.252.17.132]
+com no m†ximo 30 saltos:
+
+  1    <1 ms    <1 ms    <1 ms  10.17.201.254 
+  2    <1 ms    <1 ms    <1 ms  10.17.250.114 
+  3     8 ms     7 ms     7 ms  10.164.255.40 
+  4     8 ms     8 ms     8 ms  10.2.255.41 
+  5     7 ms     8 ms     8 ms  10.2.222.220 
+  6     8 ms     8 ms     8 ms  10.252.17.132 
+
+Rastreamento conclu°do.
+
+---------------------------------------------------------
+
+
+[9/10] TESTE DE VELOCIDADE - PRODEB (OpenSpeedTest)
+---------------------------------------------------------
+DATA_HORA   : 2025-12-11 20:17:00
+FONTE       : PRODEB
+DOWNLOAD    : 51.9 Mbps
+UPLOAD      : 47.3 Mbps
+PING        : 10 ms
+JITTER      : 0.3 ms
+---------------------------------------------------------
+
+
+[10/10] TESTE DE VELOCIDADE - SPEEDTEST.NET
+---------------------------------------------------------
+DATA_HORA   : 2025-12-11 20:17:24
+FONTE       : Speedtest.net
+DOWNLOAD    : 65.83 Mbps
+UPLOAD      : 66.29 Mbps
+PING        : 43.9 ms
+---------------------------------------------------------
+

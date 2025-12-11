@@ -14,6 +14,13 @@ if len(sys.argv) < 2:
     sys.exit(1)
 
 LOG_FILE = Path(sys.argv[1])
+
+# Valida se o arquivo existe
+if not LOG_FILE.exists():
+    print(f"[ERRO] Arquivo nao encontrado: {LOG_FILE}")
+    sys.exit(1)
+
+# Garante que a pasta do arquivo existe
 LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # URL do servidor interno PRODEB (OpenSpeedTest)
@@ -26,58 +33,62 @@ PRODEB_URL = "http://10.160.246.25/?Run=5"
 def run_prodeb():
     print("=== PRODEB (OpenSpeedTest interno) ===")
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
 
-        print(f"[PRODEB] Acessando {PRODEB_URL} ...")
-        page.goto(PRODEB_URL)
+            print(f"[PRODEB] Acessando {PRODEB_URL} ...")
+            page.goto(PRODEB_URL, timeout=60000)
 
-        print("[PRODEB] Aguardando o teste terminar (ate 3 min)...")
-        wait_js = """
-        () => {
-            const d = document.querySelector('#downResult');
-            const u = document.querySelector('#upRestxt');
-            const p = document.querySelector('#pingResult');
-            const j = document.querySelector('#jitterDesk');
-            if (!d || !u || !p || !j) return false;
-            const get = el => (el.textContent || '').trim();
-            const vals = [get(d), get(u), get(p), get(j)];
-            return vals.every(v => v && v !== '---');
-        }
-        """
+            print("[PRODEB] Aguardando o teste terminar (ate 3 min)...")
+            wait_js = """
+            () => {
+                const d = document.querySelector('#downResult');
+                const u = document.querySelector('#upRestxt');
+                const p = document.querySelector('#pingResult');
+                const j = document.querySelector('#jitterDesk');
+                if (!d || !u || !p || !j) return false;
+                const get = el => (el.textContent || '').trim();
+                const vals = [get(d), get(u), get(p), get(j)];
+                return vals.every(v => v && v !== '---');
+            }
+            """
 
-        try:
-            page.wait_for_function(wait_js, timeout=180_000)  # 180s
-        except PlaywrightTimeoutError:
+            try:
+                page.wait_for_function(wait_js, timeout=180_000)  # 180s
+            except PlaywrightTimeoutError:
+                browser.close()
+                print("[PRODEB][ERRO] Timeout: o teste nao terminou em 3 minutos.")
+                return None
+
+            def get_text(selector: str) -> str:
+                txt = page.text_content(selector)
+                return txt.strip() if txt else ""
+
+            download = get_text("#downResult")
+            upload = get_text("#upRestxt")
+            ping = get_text("#pingResult")
+            jitter = get_text("#jitterDesk")
+
             browser.close()
-            print("[PRODEB][ERRO] Timeout: o teste nao terminou em 3 minutos.")
-            return None
 
-        def get_text(selector: str) -> str:
-            txt = page.text_content(selector)
-            return txt.strip() if txt else ""
+        print("[PRODEB] Resultados:")
+        print(f"    Download: {download} Mbps")
+        print(f"    Upload  : {upload} Mbps")
+        print(f"    Ping    : {ping} ms")
+        print(f"    Jitter  : {jitter} ms")
 
-        download = get_text("#downResult")
-        upload = get_text("#upRestxt")
-        ping = get_text("#pingResult")
-        jitter = get_text("#jitterDesk")
-
-        browser.close()
-
-    print("[PRODEB] Resultados:")
-    print(f"    Download: {download} Mbps")
-    print(f"    Upload  : {upload} Mbps")
-    print(f"    Ping    : {ping} ms")
-    print(f"    Jitter  : {jitter} ms")
-
-    return {
-        "source": "PRODEB",
-        "download": download,
-        "upload": upload,
-        "ping": ping,
-        "jitter": jitter,
-    }
+        return {
+            "source": "PRODEB",
+            "download": download,
+            "upload": upload,
+            "ping": ping,
+            "jitter": jitter,
+        }
+    except Exception as e:
+        print(f"[PRODEB][ERRO] Erro ao executar teste: {e}")
+        return None
 
 
 # ======================================================================
@@ -100,14 +111,20 @@ def run_speedtest_net():
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=600,
+                timeout=120,  # 2 minutos
             )
         except FileNotFoundError as e:
-            ultimo_erro = str(e)
+            ultimo_erro = f"Comando nao encontrado: {cmd[0]}"
+            continue
+        except subprocess.TimeoutExpired:
+            ultimo_erro = f"Timeout ao executar {cmd[0]}"
+            continue
+        except Exception as e:
+            ultimo_erro = f"Erro ao executar {cmd[0]}: {e}"
             continue
 
         if proc.returncode != 0:
-            ultimo_erro = proc.stderr
+            ultimo_erro = f"Codigo de erro {proc.returncode}: {proc.stderr.strip()}"
             continue
 
         try:
@@ -138,8 +155,7 @@ def run_speedtest_net():
 
     print("[Speedtest.net][ERRO] Nao consegui executar speedtest-cli / speedtest.")
     if ultimo_erro:
-        print("Detalhe do ultimo erro:")
-        print(ultimo_erro.strip())
+        print(f"Detalhe: {ultimo_erro}")
     return None
 
 
@@ -149,9 +165,8 @@ def run_speedtest_net():
 def append_section_titulo(titulo: str):
     with LOG_FILE.open("a", encoding="utf-8") as f:
         f.write("\n")
-        f.write("=========================================================\n")
         f.write(f"{titulo}\n")
-        f.write("=========================================================\n")
+        f.write("---------------------------------------------------------\n")
 
 
 def salvar_resultado(result):
@@ -181,14 +196,19 @@ def salvar_resultado(result):
 # ======================================================================
 def main():
     print(f"[INFO] Usando arquivo de log: {LOG_FILE}")
+    print()
 
-    append_section_titulo("[8/7] TESTE DE VELOCIDADE - PRODEB (OpenSpeedTest)")
+    print("9/10 .... Testando velocidade PRODEB (OpenSpeedTest interno)")
+    append_section_titulo("[9/10] TESTE DE VELOCIDADE - PRODEB (OpenSpeedTest)")
     r1 = run_prodeb()
     salvar_resultado(r1)
+    print()
 
-    append_section_titulo("[9/7] TESTE DE VELOCIDADE - SPEEDTEST.NET")
+    print("10/10 ... Testando velocidade Speedtest.net")
+    append_section_titulo("[10/10] TESTE DE VELOCIDADE - SPEEDTEST.NET")
     r2 = run_speedtest_net()
     salvar_resultado(r2)
+    print()
 
 
 if __name__ == "__main__":

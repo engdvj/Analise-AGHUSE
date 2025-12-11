@@ -13,9 +13,26 @@ LATENCIA_BOA = 30        # ms - aceitável
 LATENCIA_REGULAR = 50    # ms - atenção
 # > 50ms = Ruim
 
+# Baseline Ideal de Velocidade (Link dedicado 100 Mbps)
+VELOCIDADE_DOWNLOAD_IDEAL = 80    # Mbps - valor de referência ideal (80% do link)
+VELOCIDADE_DOWNLOAD_BOA = 50      # Mbps - aceitável (50% do link)
+VELOCIDADE_DOWNLOAD_RUIM = 30     # Mbps - crítico (30% do link)
+
+VELOCIDADE_UPLOAD_IDEAL = 80      # Mbps (link simétrico)
+VELOCIDADE_UPLOAD_BOA = 50        # Mbps
+VELOCIDADE_UPLOAD_RUIM = 30       # Mbps
+
 # Detecção de Horários de Pico
 THRESHOLD_PICO = 1.10    # 10% acima da média geral = pico
 MIN_DURACAO_PICO = 2     # Mínimo 2 horas consecutivas para ser considerado pico
+
+# Detecção de Degradação de Velocidade
+THRESHOLD_DEGRADACAO = 0.5  # 50% abaixo da média = degradação
+MIN_DURACAO_DEGRADACAO = 2  # Mínimo 2 horas consecutivas
+
+# Detecção de Discrepância entre Fontes (PRODEB vs Speedtest)
+THRESHOLD_DISCREPANCIA_ABS = 20  # 20 Mbps de diferença = discrepância
+THRESHOLD_DISCREPANCIA_PERC = 30  # 30% de diferença percentual = discrepância
 
 # Detecção de Anomalias
 DESVIO_ANOMALIA = 2.5    # 2.5 desvios padrão = anomalia
@@ -33,7 +50,9 @@ def extrair_dados_teste(conteudo):
         'ping_aghuse': {'min': None, 'max': None, 'media': None, 'perda': None},
         'ping_interno': {'min': None, 'max': None, 'media': None, 'perda': None},
         'ping_externo': {'min': None, 'max': None, 'media': None, 'perda': None},
-        'tracert_saltos': 0
+        'tracert_saltos': 0,
+        'velocidade_prodeb': {'download': None, 'upload': None, 'ping': None, 'jitter': None},
+        'velocidade_speedtest': {'download': None, 'upload': None, 'ping': None}
     }
 
     # Extrair timestamp
@@ -98,6 +117,26 @@ def extrair_dados_teste(conteudo):
 
         # Extrair rotas completas do tracert
         dados['tracert_rota'] = extrair_rotas_tracert(tracert_section.group(0))
+
+    # Extrair dados do teste de velocidade PRODEB (OpenSpeedTest)
+    match = re.search(r'\[9/10\].*?DOWNLOAD\s+:\s+([\d.]+)\s*Mbps.*?'
+                      r'UPLOAD\s+:\s+([\d.]+)\s*Mbps.*?'
+                      r'PING\s+:\s+([\d.]+)\s*ms.*?'
+                      r'JITTER\s+:\s+([\d.]+)\s*ms', conteudo, re.DOTALL)
+    if match:
+        dados['velocidade_prodeb']['download'] = float(match.group(1))
+        dados['velocidade_prodeb']['upload'] = float(match.group(2))
+        dados['velocidade_prodeb']['ping'] = float(match.group(3))
+        dados['velocidade_prodeb']['jitter'] = float(match.group(4))
+
+    # Extrair dados do teste de velocidade Speedtest.net
+    match = re.search(r'\[10/10\].*?DOWNLOAD\s+:\s+([\d.]+)\s*Mbps.*?'
+                      r'UPLOAD\s+:\s+([\d.]+)\s*Mbps.*?'
+                      r'PING\s+:\s+([\d.]+)\s*ms', conteudo, re.DOTALL)
+    if match:
+        dados['velocidade_speedtest']['download'] = float(match.group(1))
+        dados['velocidade_speedtest']['upload'] = float(match.group(2))
+        dados['velocidade_speedtest']['ping'] = float(match.group(3))
 
     return dados
 
