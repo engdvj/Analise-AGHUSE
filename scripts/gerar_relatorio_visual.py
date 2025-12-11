@@ -170,9 +170,20 @@ def parse_relatorio_semanal(file_path):
         'picos': [],
         'scores_horario': [],
         'analise_dias_semana': [],
+        'analise_dias_semana_externo': [],
         'total_anomalias': 0,
         'anomalias': [],
-        'distribuicao': []
+        'distribuicao': [],
+        'distribuicao_externo': [],
+        # Análise de rotas (tracert)
+        'rotas_total': 0,
+        'rotas': [],
+        'correlacao_rotas': '',
+        'mudancas_rota': {
+            'total': 0,
+            'com_perda': 0,
+            'ultimas': []
+        }
     }
 
     # Extrair período
@@ -347,14 +358,48 @@ def parse_relatorio_semanal(file_path):
         data['regressao']['previsao_7d'] = float(previsao_match.group(1))
 
     # 2. Horários de Pico
-    picos_section = re.findall(r'\*\*(.+?)\*\*:\s*(\d+)h-(\d+)h\s*\(latência média ([\d.]+)ms', content)
-    for nome, inicio, fim, lat in picos_section:
-        data['picos'].append({
-            'nome': nome,
-            'inicio': int(inicio),
-            'fim': int(fim),
-            'latencia_media': float(lat)
-        })
+    pico_section = re.search(r'### Horários de Pico.*?\n\n(.*?)(?=### |\Z)', content, re.DOTALL)
+    if pico_section:
+        for line in pico_section.group(1).splitlines():
+            line = line.strip()
+            if not line.startswith('-'):
+                continue
+
+            pico_match = re.match(
+                r'- \*\*(.+?)\*\*:\s*(\d+)h-(\d+)h\s*\(latência média ([\d.,]+)ms(?:,\s*([+-]?[\d.,]+)ms .*?)?(?:,\s*(\d+)h consecutivas)?',
+                line
+            )
+            if pico_match:
+                lat_media = float(pico_match.group(4).replace(',', '.'))
+                delta = pico_match.group(5)
+                duracao = pico_match.group(6)
+
+                # Fallback para pegar duração se o grupo opcional não capturar
+                if not duracao:
+                    dur_match = re.search(r'(\d+)h consecutivas', line)
+                    if dur_match:
+                        duracao = int(dur_match.group(1))
+
+                data['picos'].append({
+                    'nome': pico_match.group(1),
+                    'inicio': int(pico_match.group(2)),
+                    'fim': int(pico_match.group(3)),
+                    'latencia_media': lat_media,
+                    'delta_media': float(delta.replace(',', '.')) if delta else None,
+                    'duracao': int(duracao) if duracao else None
+                })
+
+    if not data['picos']:
+        picos_section = re.findall(r'\*\*(.+?)\*\*:\s*(\d+)h-(\d+)h\s*\(latência média ([\d.]+)ms', content)
+        for nome, inicio, fim, lat in picos_section:
+            data['picos'].append({
+                'nome': nome,
+                'inicio': int(inicio),
+                'fim': int(fim),
+                'latencia_media': float(lat),
+                'delta_media': None,
+                'duracao': None
+            })
 
     # 3. Scores por Horário (AGHUSE e Rede Externa)
     scores_section = re.search(r'## Score de Qualidade por Horário.*?\n\|.*?\n\|---.*?\n((?:\|.*?\n)+)', content, re.DOTALL)
@@ -418,36 +463,149 @@ def parse_relatorio_semanal(file_path):
                     'pior_latencia': 0
                 })
 
-    # 5. Anomalias
+    # Análise por Dia da Semana - Rede Externa (tabela adicional)
+    dias_semana_ext_section = re.search(r'Análise por Dia da Semana - Rede Externa.*?\n\|.*?\n\|---.*?\n((?:\|.*?\n)+)', content, re.DOTALL)
+    if dias_semana_ext_section:
+        for line in dias_semana_ext_section.group(1).strip().split('\n'):
+            if '⚠️' in line or 'Poucos dados' in line:
+                continue
+
+            dia_match = re.match(r'\|\s*(\w+)\s*\|\s*([\d.]+)ms(?:\s*⚠️)?\s*\|\s*([+-][\d.]+)%\s*\|\s*(\d+)h\s*\(([\d.]+)ms\)\s*\|\s*(\d+)', line)
+            if dia_match:
+                data['analise_dias_semana_externo'].append({
+                    'dia': dia_match.group(1),
+                    'latencia_media': float(dia_match.group(2)),
+                    'vs_media': float(dia_match.group(3)),
+                    'pior_horario': int(dia_match.group(4)),
+                    'pior_latencia': float(dia_match.group(5)),
+                    'testes': int(dia_match.group(6))
+                })
+                continue
+
+            dia_sem_dados_match = re.match(r'\|\s*(\w+)\s*\|\s*-\s*\|\s*-\s*\|\s*-\s*\|\s*0', line)
+            if dia_sem_dados_match:
+                data['analise_dias_semana_externo'].append({
+                    'dia': dia_sem_dados_match.group(1),
+                    'latencia_media': 0,
+                    'vs_media': 0,
+                    'pior_horario': 0,
+                    'pior_latencia': 0,
+                    'testes': 0
+                })
+
+    # 5. Análise de Rotas (Tracert)
+    rotas_section = re.search(r'### Análise de Rotas.*?\n\n(.*?)(?=### |\Z)', content, re.DOTALL)
+    if rotas_section:
+        rotas_text = rotas_section.group(1)
+
+        total_rotas_match = re.search(r'Total de rotas detectadas\*\*:\s*(\d+)', rotas_text)
+        if total_rotas_match:
+            data['rotas_total'] = int(total_rotas_match.group(1))
+
+        tabela_rotas = re.search(r'\| Rota \| Ocorr.*?\n\|[-|]+\n((?:\|.*?\n)+)', rotas_text, re.DOTALL)
+        if tabela_rotas:
+            for line in tabela_rotas.group(1).strip().split('\n'):
+                cells = [c.strip() for c in line.strip().strip('|').split('|')]
+                if len(cells) < 5:
+                    continue
+
+                nome_rota = cells[0]
+                principal = 'principal' in nome_rota.lower()
+                taxa_raw = cells[4].replace('%', '').replace(',', '.')
+
+                data['rotas'].append({
+                    'nome': nome_rota,
+                    'principal': principal,
+                    'ocorrencias': int(cells[1]) if cells[1].isdigit() else 0,
+                    'com_perda': int(cells[2]) if cells[2].isdigit() else 0,
+                    'sem_perda': int(cells[3]) if cells[3].isdigit() else 0,
+                    'taxa_perda': float(taxa_raw) if taxa_raw else 0.0
+                })
+
+        correlacao_match = re.search(r'Correla.+?Pacotes\*\*:\s*(.+)', rotas_text)
+        if correlacao_match:
+            data['correlacao_rotas'] = correlacao_match.group(1).strip()
+
+        mudancas_match = re.search(r'Mudanças de rota detectadas\*\*:\s*(\d+)(?:\s*\((\d+)\s+associadas.*?\))?', rotas_text)
+        if mudancas_match:
+            data['mudancas_rota']['total'] = int(mudancas_match.group(1))
+            data['mudancas_rota']['com_perda'] = int(mudancas_match.group(2)) if mudancas_match.group(2) else 0
+
+        ultimas_section = re.search(r'(mudan[cç]as de rota com perda|O que mudou).*?\n\n((?:-.*\n)+)', rotas_text, re.IGNORECASE | re.DOTALL)
+        if ultimas_section:
+            for line in ultimas_section.group(2).splitlines():
+                line = line.strip()
+                if line.startswith('-'):
+                    data['mudancas_rota']['ultimas'].append(line.lstrip('-').strip())
+
+    # 6. Anomalias
     anomalias_count_match = re.search(r'Total de (\d+) anomalia', content)
     if anomalias_count_match:
         data['total_anomalias'] = int(anomalias_count_match.group(1))
 
     # Extrair lista de anomalias
-    anomalias_section = re.search(r'## Alertas de Anomalias.*?\n\n((?:⚠️.*?\n)+)', content, re.DOTALL)
+    anomalias_section = re.search(r'### Anomalias de Latência.*?\n\n(.*?)(?=## |\Z)', content, re.DOTALL)
     if anomalias_section:
         for line in anomalias_section.group(1).strip().split('\n'):
-            if line.startswith('⚠️'):
-                # Extrair timestamp e latência
-                anom_match = re.match(r'⚠️\s*\*\*(.+?)\*\*:\s*Latência\s*([\d.]+)ms', line)
-                if anom_match:
-                    data['anomalias'].append({
-                        'timestamp': anom_match.group(1),
-                        'latencia': float(anom_match.group(2)),
-                        'severidade': 'alta' if '🔴' in line else 'media'
+            line = line.strip()
+            if not line:
+                continue
+
+            anom_match = re.search(r'(?:⚠️\s*)?\*\*(.+?)\*\*:\s*Latência\s*([\d.]+)ms', line)
+            if anom_match:
+                severidade = 'media'
+                sev_match = re.search(r'Severidade[:\]]\s*(alta|m[ée]dia|baixa)', line, re.IGNORECASE)
+                if sev_match:
+                    sev_val = sev_match.group(1).lower()
+                    if 'alta' in sev_val:
+                        severidade = 'alta'
+                    elif 'baixa' in sev_val:
+                        severidade = 'baixa'
+                elif '🔴' in line:
+                    severidade = 'alta'
+
+                data['anomalias'].append({
+                    'timestamp': anom_match.group(1),
+                    'latencia': float(anom_match.group(2)),
+                    'severidade': severidade
+                })
+
+    # 7. Distribuição (buscar tabelas de AGHUSE e Rede Externa) - robusto a acentuação e linhas
+    dist_block = ""
+    lines = content.splitlines()
+    for idx, line in enumerate(lines):
+        if line.startswith('## ') and ('Distribui' in line) and ('Lat' in line):
+            # Coletar linhas até o próximo título de nível 2 (## )
+            block_lines = []
+            for sub in lines[idx + 1:]:
+                if sub.startswith('## '):
+                    break
+                block_lines.append(sub)
+            dist_block = "\n".join(block_lines)
+            break
+
+    if dist_block:
+        tabela_aghuse = re.search(r'\|\s*Faixa\s*\|.*?\n\|[-|]+\n((?:\|.*?\n)+)', dist_block, re.DOTALL)
+        if tabela_aghuse:
+            for line in tabela_aghuse.group(1).strip().split('\n'):
+                dist_match = re.match(r'\|\s*(.+?)\s*\|\s*(\d+)\s*\|\s*([\d.]+)%', line)
+                if dist_match:
+                    data['distribuicao'].append({
+                        'faixa': dist_match.group(1).strip(),
+                        'frequencia': int(dist_match.group(2)),
+                        'percentual': float(dist_match.group(3))
                     })
 
-    # 6. Distribuição (buscar pela tabela com 3 colunas: Faixa, Frequência, Percentual)
-    dist_section = re.search(r'## Distribuição de Latência\s*\n\s*\| Faixa \| Frequência \| Percentual \|.*?\n\|---.*?\n((?:\|.*?\n)+)', content, re.DOTALL)
-    if dist_section:
-        for line in dist_section.group(1).strip().split('\n'):
-            dist_match = re.match(r'\|\s*(.+?)\s*\|\s*(\d+)\s*\|\s*([\d.]+)%', line)
-            if dist_match:
-                data['distribuicao'].append({
-                    'faixa': dist_match.group(1).strip(),
-                    'frequencia': int(dist_match.group(2)),
-                    'percentual': float(dist_match.group(3))
-                })
+        tabela_externo = re.search(r'Rede Externa.*?\n\|\s*Faixa\s*\|.*?\n\|[-|]+\n((?:\|.*?\n)+)', dist_block, re.DOTALL)
+        if tabela_externo:
+            for line in tabela_externo.group(1).strip().split('\n'):
+                dist_match = re.match(r'\|\s*(.+?)\s*\|\s*(\d+)\s*\|\s*([\d.]+)%', line)
+                if dist_match:
+                    data['distribuicao_externo'].append({
+                        'faixa': dist_match.group(1).strip(),
+                        'frequencia': int(dist_match.group(2)),
+                        'percentual': float(dist_match.group(3))
+                    })
 
     return data
 
@@ -483,49 +641,116 @@ def generate_html_semanal(data, output_path):
     scores_labels = [f"{s['hora']:02d}h" for s in data.get('scores_horario', [])]
 
     # Dados da distribuição
-    dist_labels = [d['faixa'] for d in data.get('distribuicao', [])]
-    dist_valores = [d['frequencia'] for d in data.get('distribuicao', [])]
+    dist_aghuse = data.get('distribuicao', [])
+    dist_externo = data.get('distribuicao_externo', [])
+    dist_labels = [d['faixa'] for d in dist_aghuse] or [d['faixa'] for d in dist_externo]
+    dist_map_aghuse = {d['faixa']: d['frequencia'] for d in dist_aghuse}
+    dist_map_externo = {d['faixa']: d['frequencia'] for d in dist_externo}
+    dist_valores_aghuse = [dist_map_aghuse.get(label, 0) for label in dist_labels]
+    dist_valores_externo = [dist_map_externo.get(label, 0) for label in dist_labels]
 
     # Dados de dias da semana
-    dias_semana_labels = [d['dia'] for d in data.get('analise_dias_semana', [])]
-    dias_semana_lat = [d['latencia_media'] for d in data.get('analise_dias_semana', [])]
-
-    # Dados para gráfico de tendências (regressão) - usar dados DIÁRIOS
-    baseline_ideal = 15.0  # Valor configurado em processar_relatorio.py
-    baseline_dados_diarios = [baseline_ideal] * len(dias_labels)
-
-    # Calcular linha de regressão se tiver dados de regressão
-    regressao = data.get('regressao', {})
-    linha_tendencia = []
-    if regressao and 'slope' in regressao and 'intercept' in regressao:
-        slope = regressao['slope']
-        intercept = regressao['intercept']
-        for i in range(len(dias_labels)):
-            linha_tendencia.append(slope * i + intercept)
+    dias_semana_aghuse = {d['dia']: d.get('latencia_media', 0) for d in data.get('analise_dias_semana', [])}
+    dias_semana_externo = {d['dia']: d.get('latencia_media', 0) for d in data.get('analise_dias_semana_externo', [])}
+    ordem_dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+    if dias_semana_aghuse or dias_semana_externo:
+        dias_semana_labels = [d for d in ordem_dias if d in dias_semana_aghuse or d in dias_semana_externo]
     else:
-        # Se não tiver regressão, linha vazia
-        linha_tendencia = [None] * len(dias_labels)
+        dias_semana_labels = []
+    dias_semana_lat = [dias_semana_aghuse.get(dia, 0) for dia in dias_semana_labels]
+    dias_semana_lat_externo = [dias_semana_externo.get(dia, 0) for dia in dias_semana_labels]
 
-    # Calcular previsão (próximos 2 dias como exemplo)
-    previsao_labels = []
-    previsao_valores = []
-    if regressao and 'slope' in regressao and 'intercept' in regressao:
-        num_dias = len(dias_labels)
-        # Adicionar 2 pontos de previsão
-        for i in range(2):
-            previsao_labels.append(f"D+{i+1}")
-            previsao_valores.append(slope * (num_dias + i) + intercept)
+    # Montar blocos HTML para aba de anomalias
+    picos_html = ""
+    if data.get('picos'):
+        for pico in data['picos']:
+            detalhes = []
+            if pico.get('delta_media') is not None:
+                detalhes.append(f"{pico['delta_media']:+.1f}ms vs média")
+            if pico.get('duracao'):
+                detalhes.append(f"{pico['duracao']}h consecutivas")
+            info_extra = ', '.join(detalhes) if detalhes else '>=2h consecutivas'
+            picos_html += f"<p><strong>{pico['nome']}:</strong> {pico['inicio']:02d}h-{pico['fim']:02d}h (média {pico['latencia_media']:.1f}ms, {info_extra})</p>"
+    else:
+        picos_html = "<p>Nenhum período de pico identificado (mínimo 2h consecutivas).</p>"
 
-    # Combinar labels para o gráfico (dias reais + previsão)
-    tendencia_labels = dias_labels + previsao_labels
+    rotas = data.get('rotas', [])
+    ANOMALIAS_PER_PAGE = 10
+    anomalias_lista = data.get('anomalias', [])
+    anomalias_data_js = json.dumps(anomalias_lista)
+    total_paginas_anomalias = max(1, (len(anomalias_lista) + ANOMALIAS_PER_PAGE - 1) // ANOMALIAS_PER_PAGE)
 
-    # Combinar dados (dias reais + None para previsão)
-    tendencia_real = dias_lat + [None] * len(previsao_labels)
-    tendencia_linha = linha_tendencia + [linha_tendencia[-1] if linha_tendencia else None] * len(previsao_labels)
-    tendencia_baseline = baseline_dados_diarios + [baseline_ideal] * len(previsao_labels)
+    def format_anomalia_item(anom):
+        sev = (anom.get('severidade') or 'média').upper()
+        cls = 'high' if sev == 'ALTA' else ''
+        lat = anom.get('latencia')
+        lat_txt = f"{lat:.1f}".rstrip('0').rstrip('.') if isinstance(lat, (int, float)) else lat
+        return (
+            f'<li class="anomaly-item {cls}">'
+            f'<div class="anomaly-timestamp">{anom.get("timestamp")}</div>'
+            f'<div class="anomaly-details">Latência: {lat_txt}ms - Severidade: {sev}</div>'
+            f'</li>'
+        )
 
-    # Dados de previsão (começar do último dia real)
-    tendencia_previsao = [None] * (len(dias_labels) - 1) + [dias_lat[-1] if dias_lat else None] + previsao_valores
+    anomalias_initial_html = ''.join([format_anomalia_item(a) for a in anomalias_lista[:ANOMALIAS_PER_PAGE]])
+    if not anomalias_initial_html:
+        anomalias_initial_html = '<li class="anomaly-item"><div class="anomaly-timestamp">Nenhuma anomalia detectada</div></li>'
+
+    pagination_initial = ""
+    if total_paginas_anomalias > 1:
+        buttons = []
+        buttons.append('<button disabled>Anterior</button>')
+        for i in range(1, min(total_paginas_anomalias, 5) + 1):
+            active = ' class="active"' if i == 1 else ''
+            buttons.append(f'<button{active}>{i}</button>')
+        if total_paginas_anomalias > 5:
+            buttons.append('<span style="padding:6px 8px;">...</span>')
+            buttons.append(f'<button>{total_paginas_anomalias}</button>')
+        buttons.append('<button>Próximo</button>')
+        pagination_initial = ''.join(buttons)
+    rotas_total = data.get('rotas_total', 0)
+    correlacao_texto = (data.get('correlacao_rotas') or '').strip() or 'Dados de tracert insuficientes para análise.'
+    mudancas_info = data.get('mudancas_rota', {})
+    mudancas_total = mudancas_info.get('total', 0)
+    mudancas_com_perda = mudancas_info.get('com_perda', 0)
+    ultimas_mudancas = mudancas_info.get('ultimas', [])
+
+    rotas_table_html = ""
+    if rotas:
+        rotas_table_html = '<table class="rotas-table"><thead><tr><th>Rota</th><th>Ocorrências</th><th>Com Perda</th><th>Sem Perda</th><th>Taxa de Perda</th></tr></thead><tbody>'
+        for idx, rota in enumerate(rotas, 1):
+            nome_rota = rota.get('nome') or f"Rota {idx}"
+            if rota.get('principal') and 'Principal' not in nome_rota:
+                nome_rota = f"{nome_rota} (Principal)"
+            rotas_table_html += (
+                f"<tr><td>{nome_rota}</td>"
+                f"<td>{rota.get('ocorrencias', 0)}</td>"
+                f"<td>{rota.get('com_perda', 0)}</td>"
+                f"<td>{rota.get('sem_perda', 0)}</td>"
+                f"<td>{rota.get('taxa_perda', 0):.1f}%</td></tr>"
+            )
+        rotas_table_html += '</tbody></table>'
+    else:
+        rotas_table_html = "<p>Dados de tracert insuficientes para análise.</p>"
+
+    mudancas_html = ""
+    if mudancas_total:
+        mudancas_html = f"<p><strong>Mudanças de rota detectadas:</strong> {mudancas_total} ({mudancas_com_perda} com perda)</p>"
+        if ultimas_mudancas:
+            mudancas_html += "<p>Últimas mudanças com perda:</p><ul class=\"change-list\">" + ''.join([f"<li>{m}</li>" for m in ultimas_mudancas]) + "</ul>"
+    else:
+        mudancas_html = "<p>Nenhuma mudança de rota registrada.</p>"
+
+    anomalias_html = ''.join([
+        f"""
+                        <li class="anomaly-item {'high' if anom.get('severidade') == 'alta' else ''}">
+                            <div class="anomaly-timestamp">{anom['timestamp']}</div>
+                            <div class="anomaly-details">Latência: {anom['latencia']}ms - Severidade: {anom.get('severidade', 'média').upper()}</div>
+                        </li>
+        """ for anom in data.get('anomalias', [])[:10]
+    ])
+    if not anomalias_html:
+        anomalias_html = '<li class="anomaly-item"><div class="anomaly-timestamp">Nenhuma anomalia detectada</div></li>'
 
     html_content = f'''<!DOCTYPE html>
 <html lang="pt-BR">
@@ -723,6 +948,88 @@ def generate_html_semanal(data, output_path):
             color: #7f8c8d;
             margin-top: 4px;
         }}
+        .rotas-table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+        }}
+        .rotas-table th {{
+            background: #ecf0f1;
+            text-align: left;
+            padding: 10px 12px;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #2c3e50;
+            letter-spacing: 0.5px;
+        }}
+        .rotas-table td {{
+            padding: 10px 12px;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 14px;
+        }}
+        .rotas-table tr:last-child td {{
+            border-bottom: none;
+        }}
+        .change-list {{
+            margin: 8px 0 0 16px;
+            padding: 0;
+        }}
+        .change-list li {{
+            margin-bottom: 4px;
+            font-size: 14px;
+            color: #5a6c7d;
+        }}
+        .pagination {{
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }}
+        .pagination button {{
+            border: 1px solid #dee2e6;
+            background: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #2c3e50;
+            transition: all 0.2s ease;
+        }}
+        .pagination button:hover {{
+            background: #f1f3f5;
+        }}
+        .pagination button.active {{
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }}
+        .pagination {{
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }}
+        .pagination button {{
+            border: 1px solid #dee2e6;
+            background: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #2c3e50;
+            transition: all 0.2s ease;
+        }}
+        .pagination button:hover {{
+            background: #f1f3f5;
+        }}
+        .pagination button.active {{
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }}
 
         .btn-voltar {{
             display: inline-block;
@@ -798,7 +1105,6 @@ def generate_html_semanal(data, output_path):
             <div class="tabs">
                 <button class="tab-button active" data-tab="visao-geral">Visão Geral</button>
                 <button class="tab-button" data-tab="analise-avancada">Análise Avançada</button>
-                <button class="tab-button" data-tab="tendencias">Tendências</button>
                 <button class="tab-button" data-tab="anomalias">Anomalias</button>
             </div>
 
@@ -857,50 +1163,26 @@ def generate_html_semanal(data, output_path):
                 </div>
             </div>
 
-            <!-- Aba 3: Tendências -->
-            <div class="tab-content" id="tendencias">
-                <div class="analysis-card">
-                    <h3>Análise de Regressão Linear</h3>
-                    <p>
-                        <strong>Tendência:</strong> {data.get('regressao', {}).get('tendencia', 'N/A')}<br>
-                        <strong>Variação:</strong> {data.get('regressao', {}).get('slope', 0):.2f}ms/dia<br>
-                        <strong>Confiabilidade (R²):</strong> {data.get('regressao', {}).get('r_squared', 0):.3f}<br>
-                        <strong>Previsão 7 dias:</strong> {data.get('regressao', {}).get('previsao_7d', 0):.1f}ms
-                    </p>
-                </div>
-
-                <div class="chart-container">
-                    <div class="chart-title">Evolução Temporal: Tendência e Previsão</div>
-                    <div class="chart-wrapper">
-                        <canvas id="regressaoChart"></canvas>
-                    </div>
-                </div>
-
-                <div class="analysis-card">
-                    <h3>Horários de Pico Detectados</h3>
-                    {''.join([f'<p><strong>{pico["nome"]}:</strong> {pico["inicio"]:02d}h-{pico["fim"]:02d}h (média {pico["latencia_media"]:.1f}ms)</p>' for pico in data.get('picos', [])])}
-                    {('<p>Nenhum período de pico identificado.</p>' if not data.get('picos') else '')}
-                </div>
-            </div>
-
-            <!-- Aba 4: Anomalias -->
+            <!-- Aba 3: Anomalias -->
             <div class="tab-content" id="anomalias">
                 <div class="analysis-card">
-                    <h3>Resumo de Anomalias</h3>
-                    <p><strong>Total de anomalias detectadas:</strong> {data.get('total_anomalias', 0)}</p>
+                    <h3>Horários de Pico</h3>
+                    {picos_html}
                 </div>
 
-                <div class="chart-container">
-                    <div class="chart-title">Top 10 Anomalias Detectadas</div>
-                    <ul class="anomaly-list">
-                        {''.join([f'''
-                        <li class="anomaly-item {'high' if anom.get('severidade') == 'alta' else ''}">
-                            <div class="anomaly-timestamp">{anom['timestamp']}</div>
-                            <div class="anomaly-details">Latência: {anom['latencia']}ms - Severidade: {anom.get('severidade', 'média').upper()}</div>
-                        </li>
-                        ''' for anom in data.get('anomalias', [])[:10]])}
-                        {('<li class="anomaly-item"><div class="anomaly-timestamp">Nenhuma anomalia detectada</div></li>' if not data.get('anomalias') else '')}
-                    </ul>
+                <div class="analysis-card">
+                    <h3>Análise de Rotas (Tracert)</h3>
+                    <p><strong>Total de rotas detectadas:</strong> {rotas_total}</p>
+                    <p><strong>Correlação rota x perda:</strong> {correlacao_texto}</p>
+                    {rotas_table_html}
+                    {mudancas_html}
+                </div>
+
+                <div class="analysis-card">
+                    <h3>Anomalias de Latência</h3>
+                    <p><strong>Total de anomalias detectadas:</strong> {data.get('total_anomalias', 0)}</p>
+                    <ul class="anomaly-list" id="anomalias-container">{anomalias_initial_html}</ul>
+                    <div class="pagination" id="anomalias-pagination">{pagination_initial}</div>
                 </div>
             </div>
         </div>
@@ -1099,86 +1381,18 @@ def generate_html_semanal(data, output_path):
             type: 'bar',
             data: {{
                 labels: {json.dumps(dist_labels)},
-                datasets: [{{
-                    label: 'Frequência',
-                    data: {json.dumps(dist_valores)},
-                    backgroundColor: ['#27ae60', '#3498db', '#f39c12', '#e74c3c', '#95a5a6'],
-                    borderWidth: 0
-                }}]
-            }},
-            options: {{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {{ legend: {{ display: false }} }},
-                scales: {{ y: {{ beginAtZero: true }} }}
-            }}
-        }});
-
-        // Gráfico Comparativo Dias da Semana
-        new Chart(document.getElementById('diasSemanaChart'), {{
-            type: 'bar',
-            data: {{
-                labels: {json.dumps(dias_semana_labels)},
-                datasets: [{{
-                    label: 'Latência Média (ms)',
-                    data: {json.dumps(dias_semana_lat)},
-                    backgroundColor: '#3498db',
-                    borderWidth: 0
-                }}]
-            }},
-            options: {{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {{ legend: {{ display: false }} }},
-                scales: {{ y: {{ beginAtZero: true }} }}
-            }}
-        }});
-
-        // Gráfico de Tendências (Evolução Diária com Regressão e Previsão) - AGHUSE vs Rede Externa
-        new Chart(document.getElementById('regressaoChart'), {{
-            type: 'line',
-            data: {{
-                labels: {json.dumps(tendencia_labels)},
                 datasets: [
                     {{
-                        label: 'AGHUSE - Latência Real',
-                        data: {json.dumps(tendencia_real)},
-                        borderColor: '#3498db',
-                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.1,
-                        pointRadius: 5,
-                        pointHoverRadius: 7
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: {json.dumps(dist_valores_aghuse)},
+                        backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                        borderWidth: 0
                     }},
                     {{
-                        label: 'Linha de Tendência',
-                        data: {json.dumps(tendencia_linha)},
-                        borderColor: '#e74c3c',
-                        borderWidth: 2,
-                        borderDash: [5, 5],
-                        fill: false,
-                        pointRadius: 0,
-                        tension: 0
-                    }},
-                    {{
-                        label: 'Previsão (próximos dias)',
-                        data: {json.dumps(tendencia_previsao)},
-                        borderColor: '#f39c12',
-                        borderWidth: 2,
-                        borderDash: [10, 5],
-                        fill: false,
-                        pointRadius: 4,
-                        tension: 0
-                    }},
-                    {{
-                        label: 'Baseline Ideal (15ms)',
-                        data: {json.dumps(tendencia_baseline)},
-                        borderColor: '#27ae60',
-                        borderWidth: 2,
-                        borderDash: [2, 2],
-                        fill: false,
-                        pointRadius: 0
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: {json.dumps(dist_valores_externo)},
+                        backgroundColor: 'rgba(231, 76, 60, 0.7)',
+                        borderWidth: 0
                     }}
                 ]
             }},
@@ -1191,6 +1405,106 @@ def generate_html_semanal(data, output_path):
                 scales: {{ y: {{ beginAtZero: true }} }}
             }}
         }});
+
+        // Gráfico Comparativo Dias da Semana
+        new Chart(document.getElementById('diasSemanaChart'), {{
+            type: 'bar',
+            data: {{
+                labels: {json.dumps(dias_semana_labels)},
+                datasets: [
+                    {{
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: {json.dumps(dias_semana_lat)},
+                        backgroundColor: '#3498db',
+                        borderWidth: 0
+                    }},
+                    {{
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: {json.dumps(dias_semana_lat_externo)},
+                        backgroundColor: '#e74c3c',
+                        borderWidth: 0
+                    }}
+                ]
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {{
+                    legend: {{ display: true, position: 'top' }}
+                }},
+                scales: {{ y: {{ beginAtZero: true }} }}
+            }}
+        }});
+
+        // ============================================================
+        // Paginação de Anomalias
+        // ============================================================
+        const anomaliasData = {anomalias_data_js};
+        const ANOMALIAS_PER_PAGE = 10;
+        let anomaliaPage = 1;
+
+        function renderAnomalias(page = 1) {{
+            const container = document.getElementById('anomalias-container');
+            const pagination = document.getElementById('anomalias-pagination');
+            if (!container || !pagination) return;
+
+            const total = anomaliasData.length;
+            const totalPages = Math.max(1, Math.ceil(total / ANOMALIAS_PER_PAGE));
+            anomaliaPage = Math.min(Math.max(page, 1), totalPages);
+
+            const start = (anomaliaPage - 1) * ANOMALIAS_PER_PAGE;
+            const slice = anomaliasData.slice(start, start + ANOMALIAS_PER_PAGE);
+
+            if (!slice.length) {{
+                container.innerHTML = '<li class="anomaly-item"><div class="anomaly-timestamp">Nenhuma anomalia detectada</div></li>';
+            }} else {{
+                container.innerHTML = slice.map(anom => {{
+                    const sev = (anom.severidade || 'média').toUpperCase();
+                    const cls = sev === 'ALTA' ? 'high' : '';
+                    const lat = typeof anom.latencia === 'number'
+                        ? anom.latencia.toFixed(1).replace('.0', '')
+                        : anom.latencia;
+                    return `
+                        <li class="anomaly-item ${{cls}}">
+                            <div class="anomaly-timestamp">${{anom.timestamp}}</div>
+                            <div class="anomaly-details">Latência: ${{lat}}ms - Severidade: ${{sev}}</div>
+                        </li>
+                    `;
+                }}).join('');
+            }}
+
+            pagination.innerHTML = '';
+            if (totalPages <= 1) return;
+
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = 'Anterior';
+            prevBtn.disabled = anomaliaPage === 1;
+            prevBtn.onclick = () => renderAnomalias(anomaliaPage - 1);
+            pagination.appendChild(prevBtn);
+
+            for (let i = 1; i <= totalPages; i++) {{
+                if (i > 3 && i < totalPages - 1 && Math.abs(i - anomaliaPage) > 2) {{
+                    if (i === 4 || i === totalPages - 2) {{
+                        const ellipsis = document.createElement('span');
+                        ellipsis.textContent = '...';
+                        ellipsis.style.padding = '6px 8px';
+                        pagination.appendChild(ellipsis);
+                    }}
+                    continue;
+                }}
+                const btn = document.createElement('button');
+                btn.textContent = i;
+                if (i === anomaliaPage) btn.classList.add('active');
+                btn.onclick = () => renderAnomalias(i);
+                pagination.appendChild(btn);
+            }}
+
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = 'Próximo';
+            nextBtn.disabled = anomaliaPage === totalPages;
+            nextBtn.onclick = () => renderAnomalias(anomaliaPage + 1);
+            pagination.appendChild(nextBtn);
+        }}
 
         // ============================================================
         // Sistema de Abas - Troca de Tabs
@@ -1208,6 +1522,9 @@ def generate_html_semanal(data, output_path):
                 document.getElementById(tabId).classList.add('active');
             }});
         }});
+
+        // Render inicial das anomalias
+        renderAnomalias(1);
     </script>
 </body>
 </html>'''

@@ -194,6 +194,88 @@
             color: #7f8c8d;
             margin-top: 4px;
         }
+        .rotas-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .rotas-table th {
+            background: #ecf0f1;
+            text-align: left;
+            padding: 10px 12px;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #2c3e50;
+            letter-spacing: 0.5px;
+        }
+        .rotas-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 14px;
+        }
+        .rotas-table tr:last-child td {
+            border-bottom: none;
+        }
+        .change-list {
+            margin: 8px 0 0 16px;
+            padding: 0;
+        }
+        .change-list li {
+            margin-bottom: 4px;
+            font-size: 14px;
+            color: #5a6c7d;
+        }
+        .pagination {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        .pagination button {
+            border: 1px solid #dee2e6;
+            background: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #2c3e50;
+            transition: all 0.2s ease;
+        }
+        .pagination button:hover {
+            background: #f1f3f5;
+        }
+        .pagination button.active {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+        .pagination {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        .pagination button {
+            border: 1px solid #dee2e6;
+            background: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #2c3e50;
+            transition: all 0.2s ease;
+        }
+        .pagination button:hover {
+            background: #f1f3f5;
+        }
+        .pagination button.active {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
 
         .btn-voltar {
             display: inline-block;
@@ -239,29 +321,29 @@
             <div class="metrics-row">
                 <div class="metric-card success">
                     <div class="metric-label">Disponibilidade</div>
-                    <div class="metric-value">99.34<span class="metric-unit">%</span></div>
+                    <div class="metric-value">99.30<span class="metric-unit">%</span></div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-label">Latência Média (AGHUSE)</div>
-                    <div class="metric-value">53.4<span class="metric-unit">ms</span></div>
+                    <div class="metric-value">52.7<span class="metric-unit">ms</span></div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-label">Latência Média (Rede Externa)</div>
-                    <div class="metric-value">43.6<span class="metric-unit">ms</span></div>
+                    <div class="metric-value">42.9<span class="metric-unit">ms</span></div>
                 </div>
                 <div class="metric-card warning">
                     <div class="metric-label">Horários com Perda (AGHUSE)</div>
-                    <div class="metric-value">20</div>
-                    <div class="metric-unit" style="font-size: 14px;">(92pkt perdidos)</div>
+                    <div class="metric-value">21</div>
+                    <div class="metric-unit" style="font-size: 14px;">(131pkt perdidos)</div>
                 </div>
                 <div class="metric-card warning">
                     <div class="metric-label">Horários com Perda (Rede Externa)</div>
-                    <div class="metric-value">20</div>
-                    <div class="metric-unit" style="font-size: 14px;">(45pkt perdidos)</div>
+                    <div class="metric-value">21</div>
+                    <div class="metric-unit" style="font-size: 14px;">(74pkt perdidos)</div>
                 </div>
                 <div class="metric-card danger">
                     <div class="metric-label">Total de Testes</div>
-                    <div class="metric-value">993</div>
+                    <div class="metric-value">1291</div>
                 </div>
             </div>
 
@@ -269,7 +351,6 @@
             <div class="tabs">
                 <button class="tab-button active" data-tab="visao-geral">Visão Geral</button>
                 <button class="tab-button" data-tab="analise-avancada">Análise Avançada</button>
-                <button class="tab-button" data-tab="tendencias">Tendências</button>
                 <button class="tab-button" data-tab="anomalias">Anomalias</button>
             </div>
 
@@ -328,95 +409,26 @@
                 </div>
             </div>
 
-            <!-- Aba 3: Tendências -->
-            <div class="tab-content" id="tendencias">
-                <div class="analysis-card">
-                    <h3>Análise de Regressão Linear</h3>
-                    <p>
-                        <strong>Tendência:</strong> N/A<br>
-                        <strong>Variação:</strong> 0.00ms/dia<br>
-                        <strong>Confiabilidade (R²):</strong> 0.000<br>
-                        <strong>Previsão 7 dias:</strong> 0.0ms
-                    </p>
-                </div>
-
-                <div class="chart-container">
-                    <div class="chart-title">Evolução Temporal: Tendência e Previsão</div>
-                    <div class="chart-wrapper">
-                        <canvas id="regressaoChart"></canvas>
-                    </div>
-                </div>
-
-                <div class="analysis-card">
-                    <h3>Horários de Pico Detectados</h3>
-                    
-                    <p>Nenhum período de pico identificado.</p>
-                </div>
-            </div>
-
-            <!-- Aba 4: Anomalias -->
+            <!-- Aba 3: Anomalias -->
             <div class="tab-content" id="anomalias">
                 <div class="analysis-card">
-                    <h3>Resumo de Anomalias</h3>
-                    <p><strong>Total de anomalias detectadas:</strong> 11</p>
+                    <h3>Horários de Pico</h3>
+                    <p>Nenhum período de pico identificado (mínimo 2h consecutivas).</p>
                 </div>
 
-                <div class="chart-container">
-                    <div class="chart-title">Top 10 Anomalias Detectadas</div>
-                    <ul class="anomaly-list">
-                        
-                        <li class="anomaly-item ">
-                            <div class="anomaly-timestamp">08/12 às 00:44</div>
-                            <div class="anomaly-details">Latência: 64.0ms - Severidade: MEDIA</div>
-                        </li>
-                        
-                        <li class="anomaly-item ">
-                            <div class="anomaly-timestamp">08/12 às 09:29</div>
-                            <div class="anomaly-details">Latência: 68.0ms - Severidade: MEDIA</div>
-                        </li>
-                        
-                        <li class="anomaly-item ">
-                            <div class="anomaly-timestamp">08/12 às 10:59</div>
-                            <div class="anomaly-details">Latência: 66.0ms - Severidade: MEDIA</div>
-                        </li>
-                        
-                        <li class="anomaly-item ">
-                            <div class="anomaly-timestamp">08/12 às 11:04</div>
-                            <div class="anomaly-details">Latência: 66.0ms - Severidade: MEDIA</div>
-                        </li>
-                        
-                        <li class="anomaly-item ">
-                            <div class="anomaly-timestamp">08/12 às 11:09</div>
-                            <div class="anomaly-details">Latência: 68.0ms - Severidade: MEDIA</div>
-                        </li>
-                        
-                        <li class="anomaly-item ">
-                            <div class="anomaly-timestamp">08/12 às 19:44</div>
-                            <div class="anomaly-details">Latência: 70.0ms - Severidade: MEDIA</div>
-                        </li>
-                        
-                        <li class="anomaly-item ">
-                            <div class="anomaly-timestamp">08/12 às 23:39</div>
-                            <div class="anomaly-details">Latência: 55.0ms - Severidade: MEDIA</div>
-                        </li>
-                        
-                        <li class="anomaly-item ">
-                            <div class="anomaly-timestamp">09/12 às 07:24</div>
-                            <div class="anomaly-details">Latência: 65.0ms - Severidade: MEDIA</div>
-                        </li>
-                        
-                        <li class="anomaly-item ">
-                            <div class="anomaly-timestamp">09/12 às 07:34</div>
-                            <div class="anomaly-details">Latência: 70.0ms - Severidade: MEDIA</div>
-                        </li>
-                        
-                        <li class="anomaly-item ">
-                            <div class="anomaly-timestamp">09/12 às 17:54</div>
-                            <div class="anomaly-details">Latência: 72.0ms - Severidade: MEDIA</div>
-                        </li>
-                        
-                        
-                    </ul>
+                <div class="analysis-card">
+                    <h3>Análise de Rotas (Tracert)</h3>
+                    <p><strong>Total de rotas detectadas:</strong> 3</p>
+                    <p><strong>Correlação rota x perda:</strong> Rota principal: 8.7% de perda em 1283 testes. Alternativas: 25.0% em 8 testes. Mudanças: 2 de 16 (12%) tiveram perda. Rotas alternativas mais instáveis que a principal.</p>
+                    <table class="rotas-table"><thead><tr><th>Rota</th><th>Ocorrências</th><th>Com Perda</th><th>Sem Perda</th><th>Taxa de Perda</th></tr></thead><tbody><tr><td>Rota 1 (Principal) - 10.17.201.254 -> 10.17.250.114 -> ... -> 10.2.222.220 -> 10.252.17.132 (6 saltos)</td><td>1283</td><td>112</td><td>1171</td><td>8.7%</td></tr><tr><td>Rota 2 - 10.17.201.254 -> 10.17.250.114 -> ... -> 10.252.17.132 -> 10.252.17.132 (7 saltos)</td><td>7</td><td>2</td><td>5</td><td>28.6%</td></tr><tr><td>Rota 3 - 10.17.201.254 -> 10.17.250.114 -> ... -> 10.2.222.220 -> 10.252.17.132 (7 saltos)</td><td>1</td><td>0</td><td>1</td><td>0.0%</td></tr></tbody></table>
+                    <p><strong>Mudanças de rota detectadas:</strong> 16 (2 com perda)</p><p>Últimas mudanças com perda:</p><ul class="change-list"><li>10/12 às 00:24: Rota 3 -> Rota 1 (Principal) (sem perda registrada; diferente a partir do salto 5: 10.2.222.244 -> 10.2.222.220)</li><li>10/12 às 12:54: Rota 1 (Principal) -> Rota 2 (sem perda registrada; mesmos hops iniciais, 1 salto(s) a mais)</li><li>10/12 às 12:59: Rota 2 -> Rota 1 (Principal) (sem perda registrada; mesmos hops iniciais, 1 salto(s) a menos)</li><li>11/12 às 09:39: Rota 1 (Principal) -> Rota 2 (sem perda registrada; mesmos hops iniciais, 1 salto(s) a mais)</li><li>11/12 às 09:44: Rota 2 -> Rota 1 (Principal) (sem perda registrada; mesmos hops iniciais, 1 salto(s) a menos)</li></ul>
+                </div>
+
+                <div class="analysis-card">
+                    <h3>Anomalias de Latência</h3>
+                    <p><strong>Total de anomalias detectadas:</strong> 50</p>
+                    <ul class="anomaly-list" id="anomalias-container"><li class="anomaly-item "><div class="anomaly-timestamp">04/12 às 13:44</div><div class="anomaly-details">Latência: 29ms - Severidade: MEDIA</div></li><li class="anomaly-item "><div class="anomaly-timestamp">04/12 às 20:04</div><div class="anomaly-details">Latência: 54ms - Severidade: MEDIA</div></li><li class="anomaly-item "><div class="anomaly-timestamp">04/12 às 21:29</div><div class="anomaly-details">Latência: 55ms - Severidade: MEDIA</div></li><li class="anomaly-item "><div class="anomaly-timestamp">05/12 às 04:49</div><div class="anomaly-details">Latência: 51ms - Severidade: MEDIA</div></li><li class="anomaly-item "><div class="anomaly-timestamp">05/12 às 05:24</div><div class="anomaly-details">Latência: 54ms - Severidade: MEDIA</div></li><li class="anomaly-item high"><div class="anomaly-timestamp">05/12 às 16:19</div><div class="anomaly-details">Latência: 68ms - Severidade: ALTA</div></li><li class="anomaly-item "><div class="anomaly-timestamp">06/12 às 03:39</div><div class="anomaly-details">Latência: 52ms - Severidade: MEDIA</div></li><li class="anomaly-item "><div class="anomaly-timestamp">06/12 às 13:19</div><div class="anomaly-details">Latência: 51ms - Severidade: MEDIA</div></li><li class="anomaly-item "><div class="anomaly-timestamp">06/12 às 18:34</div><div class="anomaly-details">Latência: 57ms - Severidade: MEDIA</div></li><li class="anomaly-item "><div class="anomaly-timestamp">07/12 às 03:19</div><div class="anomaly-details">Latência: 56ms - Severidade: MEDIA</div></li></ul>
+                    <div class="pagination" id="anomalias-pagination"><button disabled>Anterior</button><button class="active">1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>Próximo</button></div>
                 </div>
             </div>
         </div>
@@ -430,10 +442,10 @@
         new Chart(document.getElementById('dispChart'), {
             type: 'line',
             data: {
-                labels: ["07/12/2025", "08/12/2025", "09/12/2025", "10/12/2025"],
+                labels: ["07/12/2025", "08/12/2025", "09/12/2025", "10/12/2025", "11/12/2025"],
                 datasets: [{
                     label: 'Disponibilidade (%)',
-                    data: [99.76, 99.31, 99.01, 99.24],
+                    data: [99.76, 99.31, 99.01, 99.15, 99.3],
                     borderColor: '#27ae60',
                     backgroundColor: 'rgba(39, 174, 96, 0.1)',
                     borderWidth: 2,
@@ -455,17 +467,17 @@
         new Chart(document.getElementById('latDiaChart'), {
             type: 'bar',
             data: {
-                labels: ["07/12/2025", "08/12/2025", "09/12/2025", "10/12/2025"],
+                labels: ["07/12/2025", "08/12/2025", "09/12/2025", "10/12/2025", "11/12/2025"],
                 datasets: [
                     {
                         label: 'AGHUSE (10.252.17.132)',
-                        data: [53.9, 51.1, 55.5, 52.9],
+                        data: [53.9, 51.1, 55.5, 52.8, 47.3],
                         backgroundColor: '#3498db',
                         borderWidth: 0
                     },
                     {
                         label: 'Rede Externa (8.8.8.8)',
-                        data: [35.0, 42.1, 50.0, 49.7],
+                        data: [35.0, 42.1, 50.0, 45.3, 39.4],
                         backgroundColor: '#e74c3c',
                         borderWidth: 0
                     }
@@ -492,7 +504,7 @@
                 datasets: [
                     {
                         label: 'AGHUSE (10.252.17.132)',
-                        data: [51.6, 50.7, 50.8, 50.8, 50.7, 50.7, 53.7, 53.3, 53.2, 53.7, 53.8, 54.7, 58.0, 61.3, 56.8, 55.6, 54.8, 51.3, 52.9, 54.3, 53.7, 53.7, 52.0, 49.6],
+                        data: [51.1, 50.4, 50.5, 50.5, 50.4, 50.5, 52.9, 52.6, 52.6, 53.3, 53.2, 47.4, 57.3, 59.5, 56.2, 55.4, 54.8, 52.0, 52.6, 53.1, 52.5, 52.6, 51.4, 49.6],
                         borderColor: '#3498db',
                         backgroundColor: 'rgba(52, 152, 219, 0.1)',
                         borderWidth: 3,
@@ -503,7 +515,7 @@
                     },
                     {
                         label: 'Rede Externa (8.8.8.8)',
-                        data: [39.7, 39.0, 39.0, 39.0, 38.9, 39.0, 38.2, 40.9, 44.7, 52.1, 49.6, 44.1, 43.3, 41.4, 41.9, 42.4, 42.7, 43.2, 46.9, 49.7, 48.6, 48.9, 48.8, 45.4],
+                        data: [41.2, 40.8, 40.6, 40.6, 38.7, 37.8, 37.2, 39.8, 42.8, 48.7, 46.6, 44.3, 41.5, 39.9, 42.1, 44.2, 44.4, 44.8, 47.4, 46.8, 45.1, 45.3, 45.2, 43.3],
                         borderColor: '#e74c3c',
                         backgroundColor: 'rgba(231, 76, 60, 0.1)',
                         borderWidth: 3,
@@ -535,13 +547,13 @@
                 datasets: [
                     {
                         label: 'AGHUSE (10.252.17.132)',
-                        data: [0, 2, 0, 3, 1, 0, 1, 3, 6, 11, 15, 8, 6, 11, 5, 5, 4, 2, 3, 1, 2, 0, 1, 2],
+                        data: [1, 2, 0, 3, 1, 0, 1, 3, 9, 17, 17, 19, 7, 13, 9, 8, 6, 2, 6, 1, 2, 0, 1, 3],
                         backgroundColor: '#3498db',
                         borderWidth: 0
                     },
                     {
                         label: 'Rede Externa (8.8.8.8)',
-                        data: [0, 0, 1, 1, 0, 0, 1, 5, 6, 5, 1, 1, 3, 4, 5, 2, 3, 1, 1, 1, 1, 1, 1, 1],
+                        data: [0, 1, 1, 1, 0, 0, 1, 6, 13, 6, 3, 5, 4, 7, 6, 3, 7, 1, 1, 3, 1, 1, 1, 2],
                         backgroundColor: '#e74c3c',
                         borderWidth: 0
                     }
@@ -572,13 +584,13 @@
                 datasets: [
                     {
                         label: 'Score AGHUSE',
-                        data: [3.7, 3.8, 4.8, 1.7, 3.8, 4.8, 1.4, 1.2, 1.2, 0.7, 0.7, 0.7, 0.7, 0.5, 0.7, 0.6, 3.2, 3.3, 0.8, 3.2, 1.4, 1.7, 1.2, 1.5],
+                        data: [2.9, 4.0, 4.8, 1.8, 4.0, 4.8, 1.6, 1.4, 1.2, 0.7, 0.7, 0.9, 0.6, 0.5, 0.6, 0.7, 2.2, 2.3, 1.2, 2.3, 1.4, 2.3, 1.5, 0.9],
                         backgroundColor: '#FF8C00',
                         borderWidth: 0
                     },
                     {
                         label: 'Score Rede Externa',
-                        data: [0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.6, 0.5, 0.6, 0.6, 0.7, 0.8, 0.7, 0.7, 0.7, 0.7, 0.8, 0.8],
+                        data: [0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.7, 0.7, 0.7, 0.7, 0.7, 0.9, 0.6, 0.5, 0.6, 0.7, 0.7, 0.8, 0.7, 0.7, 0.7, 0.7, 0.8, 0.8],
                         backgroundColor: '#DC143C',
                         borderWidth: 0
                     }
@@ -615,86 +627,18 @@
             type: 'bar',
             data: {
                 labels: ["0-20ms", "20-40ms", "40-60ms", "60-80ms", "80+ms"],
-                datasets: [{
-                    label: 'Frequência',
-                    data: [0, 0, 912, 71, 10],
-                    backgroundColor: ['#27ae60', '#3498db', '#f39c12', '#e74c3c', '#95a5a6'],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true } }
-            }
-        });
-
-        // Gráfico Comparativo Dias da Semana
-        new Chart(document.getElementById('diasSemanaChart'), {
-            type: 'bar',
-            data: {
-                labels: ["Segunda", "Ter\u00e7a", "Quarta", "Quinta", "Sexta", "S\u00e1bado", "Domingo"],
-                datasets: [{
-                    label: 'Latência Média (ms)',
-                    data: [51.1, 55.5, 52.9, 0, 0, 0, 53.9],
-                    backgroundColor: '#3498db',
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true } }
-            }
-        });
-
-        // Gráfico de Tendências (Evolução Diária com Regressão e Previsão) - AGHUSE vs Rede Externa
-        new Chart(document.getElementById('regressaoChart'), {
-            type: 'line',
-            data: {
-                labels: ["07/12/2025", "08/12/2025", "09/12/2025", "10/12/2025"],
                 datasets: [
                     {
-                        label: 'AGHUSE - Latência Real',
-                        data: [53.9, 51.1, 55.5, 52.9],
-                        borderColor: '#3498db',
-                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.1,
-                        pointRadius: 5,
-                        pointHoverRadius: 7
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: [10, 0, 1199, 72, 10],
+                        backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                        borderWidth: 0
                     },
                     {
-                        label: 'Linha de Tendência',
-                        data: [null, null, null, null],
-                        borderColor: '#e74c3c',
-                        borderWidth: 2,
-                        borderDash: [5, 5],
-                        fill: false,
-                        pointRadius: 0,
-                        tension: 0
-                    },
-                    {
-                        label: 'Previsão (próximos dias)',
-                        data: [null, null, null, 52.9],
-                        borderColor: '#f39c12',
-                        borderWidth: 2,
-                        borderDash: [10, 5],
-                        fill: false,
-                        pointRadius: 4,
-                        tension: 0
-                    },
-                    {
-                        label: 'Baseline Ideal (15ms)',
-                        data: [15.0, 15.0, 15.0, 15.0],
-                        borderColor: '#27ae60',
-                        borderWidth: 2,
-                        borderDash: [2, 2],
-                        fill: false,
-                        pointRadius: 0
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: [0, 635, 559, 92, 4],
+                        backgroundColor: 'rgba(231, 76, 60, 0.7)',
+                        borderWidth: 0
                     }
                 ]
             },
@@ -707,6 +651,106 @@
                 scales: { y: { beginAtZero: true } }
             }
         });
+
+        // Gráfico Comparativo Dias da Semana
+        new Chart(document.getElementById('diasSemanaChart'), {
+            type: 'bar',
+            data: {
+                labels: ["Domingo", "Segunda", "Ter\u00e7a", "Quarta", "Quinta", "Sexta", "S\u00e1bado"],
+                datasets: [
+                    {
+                        label: 'AGHUSE (10.252.17.132)',
+                        data: [53.9, 51.1, 55.5, 52.8, 47.3, 0, 0],
+                        backgroundColor: '#3498db',
+                        borderWidth: 0
+                    },
+                    {
+                        label: 'Rede Externa (8.8.8.8)',
+                        data: [35.0, 42.3, 50.0, 45.3, 39.4, 0, 0],
+                        backgroundColor: '#e74c3c',
+                        borderWidth: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: 'top' }
+                },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        // ============================================================
+        // Paginação de Anomalias
+        // ============================================================
+        const anomaliasData = [{"timestamp": "04/12 \u00e0s 13:44", "latencia": 29.0, "severidade": "media"}, {"timestamp": "04/12 \u00e0s 20:04", "latencia": 54.0, "severidade": "media"}, {"timestamp": "04/12 \u00e0s 21:29", "latencia": 55.0, "severidade": "media"}, {"timestamp": "05/12 \u00e0s 04:49", "latencia": 51.0, "severidade": "media"}, {"timestamp": "05/12 \u00e0s 05:24", "latencia": 54.0, "severidade": "media"}, {"timestamp": "05/12 \u00e0s 16:19", "latencia": 68.0, "severidade": "alta"}, {"timestamp": "06/12 \u00e0s 03:39", "latencia": 52.0, "severidade": "media"}, {"timestamp": "06/12 \u00e0s 13:19", "latencia": 51.0, "severidade": "media"}, {"timestamp": "06/12 \u00e0s 18:34", "latencia": 57.0, "severidade": "media"}, {"timestamp": "07/12 \u00e0s 03:19", "latencia": 56.0, "severidade": "media"}, {"timestamp": "07/12 \u00e0s 05:04", "latencia": 56.0, "severidade": "media"}, {"timestamp": "07/12 \u00e0s 07:14", "latencia": 55.0, "severidade": "alta"}, {"timestamp": "07/12 \u00e0s 08:39", "latencia": 56.0, "severidade": "media"}, {"timestamp": "07/12 \u00e0s 09:34", "latencia": 56.0, "severidade": "media"}, {"timestamp": "07/12 \u00e0s 12:19", "latencia": 60.0, "severidade": "alta"}, {"timestamp": "07/12 \u00e0s 20:09", "latencia": 59.0, "severidade": "alta"}, {"timestamp": "07/12 \u00e0s 21:49", "latencia": 62.0, "severidade": "media"}, {"timestamp": "08/12 \u00e0s 00:44", "latencia": 64.0, "severidade": "alta"}, {"timestamp": "08/12 \u00e0s 02:29", "latencia": 50.0, "severidade": "alta"}, {"timestamp": "08/12 \u00e0s 05:44", "latencia": 50.0, "severidade": "alta"}, {"timestamp": "08/12 \u00e0s 09:29", "latencia": 68.0, "severidade": "alta"}, {"timestamp": "08/12 \u00e0s 10:59", "latencia": 66.0, "severidade": "alta"}, {"timestamp": "08/12 \u00e0s 14:34", "latencia": 57.0, "severidade": "media"}, {"timestamp": "08/12 \u00e0s 18:49", "latencia": 57.0, "severidade": "alta"}, {"timestamp": "08/12 \u00e0s 19:44", "latencia": 70.0, "severidade": "alta"}, {"timestamp": "08/12 \u00e0s 20:04", "latencia": 52.0, "severidade": "alta"}, {"timestamp": "08/12 \u00e0s 23:39", "latencia": 55.0, "severidade": "alta"}, {"timestamp": "09/12 \u00e0s 00:09", "latencia": 56.0, "severidade": "alta"}, {"timestamp": "09/12 \u00e0s 01:54", "latencia": 52.0, "severidade": "alta"}, {"timestamp": "09/12 \u00e0s 02:54", "latencia": 52.0, "severidade": "alta"}, {"timestamp": "09/12 \u00e0s 05:59", "latencia": 52.0, "severidade": "alta"}, {"timestamp": "09/12 \u00e0s 07:24", "latencia": 65.0, "severidade": "alta"}, {"timestamp": "09/12 \u00e0s 07:34", "latencia": 70.0, "severidade": "alta"}, {"timestamp": "09/12 \u00e0s 14:14", "latencia": 76.0, "severidade": "media"}, {"timestamp": "09/12 \u00e0s 15:09", "latencia": 79.0, "severidade": "media"}, {"timestamp": "09/12 \u00e0s 16:09", "latencia": 73.0, "severidade": "media"}, {"timestamp": "09/12 \u00e0s 17:54", "latencia": 72.0, "severidade": "alta"}, {"timestamp": "09/12 \u00e0s 21:39", "latencia": 58.0, "severidade": "alta"}, {"timestamp": "09/12 \u00e0s 23:44", "latencia": 52.0, "severidade": "media"}, {"timestamp": "10/12 \u00e0s 03:24", "latencia": 51.0, "severidade": "media"}, {"timestamp": "10/12 \u00e0s 06:19", "latencia": 65.0, "severidade": "media"}, {"timestamp": "10/12 \u00e0s 06:29", "latencia": 65.0, "severidade": "media"}, {"timestamp": "10/12 \u00e0s 06:34", "latencia": 64.0, "severidade": "media"}, {"timestamp": "10/12 \u00e0s 06:39", "latencia": 65.0, "severidade": "media"}, {"timestamp": "10/12 \u00e0s 07:39", "latencia": 60.0, "severidade": "alta"}, {"timestamp": "10/12 \u00e0s 09:29", "latencia": 67.0, "severidade": "alta"}, {"timestamp": "10/12 \u00e0s 10:49", "latencia": 62.0, "severidade": "media"}, {"timestamp": "10/12 \u00e0s 15:09", "latencia": 64.0, "severidade": "media"}, {"timestamp": "10/12 \u00e0s 23:24", "latencia": 55.0, "severidade": "alta"}, {"timestamp": "11/12 \u00e0s 00:44", "latencia": 52.0, "severidade": "media"}];
+        const ANOMALIAS_PER_PAGE = 10;
+        let anomaliaPage = 1;
+
+        function renderAnomalias(page = 1) {
+            const container = document.getElementById('anomalias-container');
+            const pagination = document.getElementById('anomalias-pagination');
+            if (!container || !pagination) return;
+
+            const total = anomaliasData.length;
+            const totalPages = Math.max(1, Math.ceil(total / ANOMALIAS_PER_PAGE));
+            anomaliaPage = Math.min(Math.max(page, 1), totalPages);
+
+            const start = (anomaliaPage - 1) * ANOMALIAS_PER_PAGE;
+            const slice = anomaliasData.slice(start, start + ANOMALIAS_PER_PAGE);
+
+            if (!slice.length) {
+                container.innerHTML = '<li class="anomaly-item"><div class="anomaly-timestamp">Nenhuma anomalia detectada</div></li>';
+            } else {
+                container.innerHTML = slice.map(anom => {
+                    const sev = (anom.severidade || 'média').toUpperCase();
+                    const cls = sev === 'ALTA' ? 'high' : '';
+                    const lat = typeof anom.latencia === 'number'
+                        ? anom.latencia.toFixed(1).replace('.0', '')
+                        : anom.latencia;
+                    return `
+                        <li class="anomaly-item ${cls}">
+                            <div class="anomaly-timestamp">${anom.timestamp}</div>
+                            <div class="anomaly-details">Latência: ${lat}ms - Severidade: ${sev}</div>
+                        </li>
+                    `;
+                }).join('');
+            }
+
+            pagination.innerHTML = '';
+            if (totalPages <= 1) return;
+
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = 'Anterior';
+            prevBtn.disabled = anomaliaPage === 1;
+            prevBtn.onclick = () => renderAnomalias(anomaliaPage - 1);
+            pagination.appendChild(prevBtn);
+
+            for (let i = 1; i <= totalPages; i++) {
+                if (i > 3 && i < totalPages - 1 && Math.abs(i - anomaliaPage) > 2) {
+                    if (i === 4 || i === totalPages - 2) {
+                        const ellipsis = document.createElement('span');
+                        ellipsis.textContent = '...';
+                        ellipsis.style.padding = '6px 8px';
+                        pagination.appendChild(ellipsis);
+                    }
+                    continue;
+                }
+                const btn = document.createElement('button');
+                btn.textContent = i;
+                if (i === anomaliaPage) btn.classList.add('active');
+                btn.onclick = () => renderAnomalias(i);
+                pagination.appendChild(btn);
+            }
+
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = 'Próximo';
+            nextBtn.disabled = anomaliaPage === totalPages;
+            nextBtn.onclick = () => renderAnomalias(anomaliaPage + 1);
+            pagination.appendChild(nextBtn);
+        }
 
         // ============================================================
         // Sistema de Abas - Troca de Tabs
@@ -724,6 +768,9 @@
                 document.getElementById(tabId).classList.add('active');
             });
         });
+
+        // Render inicial das anomalias
+        renderAnomalias(1);
     </script>
 </body>
 </html>

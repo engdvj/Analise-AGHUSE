@@ -999,8 +999,15 @@ def detectar_anomalias(dados_lista, latencia_por_hora, desvio_threshold=None, pe
         hora = dado['datetime'].hour
         lat = dado['ping_aghuse']['media']
 
+        # Ignorar latências muito baixas para não sinalizar outliers irrelevantes
+        if lat < max(20, LATENCIA_IDEAL):
+            continue
+
         if hora in estatisticas_hora:
             stats = estatisticas_hora[hora]
+            if stats.get('media', 0) < 10:
+                # Média muito baixa (poucos ms): não considerar como base de anomalia
+                continue
 
             # Anomalia por desvio padrão (apenas latências ALTAS são anomalias ruins)
             if stats['desvio'] > 0:
@@ -1052,7 +1059,14 @@ def analisar_rotas_tracert(dados_lista):
     from collections import defaultdict
 
     # Identificar todas as rotas únicas
-    rotas_unicas = defaultdict(lambda: {'count': 0, 'com_perda': 0, 'sem_perda': 0, 'exemplos': []})
+    rotas_unicas = defaultdict(lambda: {
+        'count': 0,
+        'com_perda': 0,
+        'sem_perda': 0,
+        'exemplos': [],
+        'ips': [],
+        'num_saltos': 0
+    })
 
     # Rastrear mudanças de rota
     mudancas_rota = []
@@ -1069,6 +1083,11 @@ def analisar_rotas_tracert(dados_lista):
 
         # Contar ocorrências
         rotas_unicas[rota_hash]['count'] += 1
+
+        # Guardar percurso da rota (usamos o primeiro registro como referência)
+        if not rotas_unicas[rota_hash]['ips'] and dado.get('tracert_rota', {}).get('ips'):
+            rotas_unicas[rota_hash]['ips'] = dado['tracert_rota']['ips']
+            rotas_unicas[rota_hash]['num_saltos'] = dado['tracert_rota'].get('num_saltos', len(dado['tracert_rota']['ips']))
 
         if tem_perda:
             rotas_unicas[rota_hash]['com_perda'] += 1
@@ -1118,8 +1137,17 @@ def analisar_rotas_tracert(dados_lista):
         correlacao['total_mudancas'] = len(mudancas_rota)
 
         # Análise textual
-        if perda_alternativas > perda_principal * 1.5:
-            correlacao['texto'] = f"Rotas alternativas apresentam {perda_alternativas:.1f}% de perda vs {perda_principal:.1f}% na rota principal. Possível instabilidade em rotas alternativas."
+        if testes_alternativos > 0:
+            partes_texto = [
+                f"Rota principal: {perda_principal:.1f}% de perda em {rota_principal_stats['count']} testes",
+                f"Alternativas: {perda_alternativas:.1f}% em {testes_alternativos} testes"
+            ]
+            if len(mudancas_rota) > 0:
+                pct_mudancas_com_perda = (correlacao['mudancas_com_perda'] / len(mudancas_rota) * 100)
+                partes_texto.append(f"Mudanças: {correlacao['mudancas_com_perda']} de {len(mudancas_rota)} ({pct_mudancas_com_perda:.0f}%) tiveram perda")
+            if perda_alternativas > perda_principal * 1.5:
+                partes_texto.append("Rotas alternativas mais instáveis que a principal")
+            correlacao['texto'] = ". ".join(partes_texto) + "."
         elif len(mudancas_rota) > 0:
             pct_mudancas_com_perda = (correlacao['mudancas_com_perda'] / len(mudancas_rota) * 100)
             correlacao['texto'] = f"Detectadas {len(mudancas_rota)} mudanças de rota, sendo {pct_mudancas_com_perda:.0f}% associadas a perda de pacotes."
@@ -1140,26 +1168,160 @@ def analisar_rotas_tracert(dados_lista):
     }
 
 
-def analisar_dia_semana(dados_lista):
+def resumir_rota_para_md(rota_hash, stats):
+    """Gera um trecho legível da rota para aparecer no relatório."""
+    ips = stats.get('ips') or (rota_hash.split(' -> ') if rota_hash else [])
+
+    if ips:
+        if len(ips) <= 5:
+            caminho = ' -> '.join(ips)
+        else:
+            caminho = f"{ips[0]} -> {ips[1]} -> ... -> {ips[-2]} -> {ips[-1]}"
+    else:
+        caminho = "caminho nao identificado"
+
+    num_saltos = stats.get('num_saltos') or len(ips)
+    if num_saltos:
+        return f"{caminho} ({num_saltos} saltos)"
+    return caminho
+
+
+def descrever_diferenca_rotas(rota_ref_ips, rota_alt_ips):
+    """Explica rapidamente onde uma rota alternativa diverge da principal."""
+    if not rota_ref_ips or not rota_alt_ips:
+        return ""
+
+    comparacao_limite = min(len(rota_ref_ips), len(rota_alt_ips))
+    for idx in range(comparacao_limite):
+        if rota_ref_ips[idx] != rota_alt_ips[idx]:
+            return f"diferente a partir do salto {idx + 1}: {rota_ref_ips[idx]} -> {rota_alt_ips[idx]}"
+
+    if len(rota_ref_ips) != len(rota_alt_ips):
+        diff = len(rota_alt_ips) - len(rota_ref_ips)
+        sentido = "a mais" if diff > 0 else "a menos"
+        return f"mesmos hops iniciais, {abs(diff)} salto(s) {sentido}"
+
+    return "mesmo caminho de hops; varia apenas a perda"
+
+
+def gerar_secao_rotas_markdown(analise_rotas, limite_rotas=5):
+    """Monta a seção de rotas com foco em clareza do caminho e impacto prático."""
+    md = []
+    md.append("### Análise de Rotas (Tracert)\n\n")
+
+    rota_principal_hash = analise_rotas.get('rota_principal')
+    if not rota_principal_hash:
+        md.append("Dados de tracert insuficientes para análise.\n\n")
+        return ''.join(md)
+
+    rotas_ordenadas = sorted(
+        analise_rotas['rotas_unicas'].items(),
+        key=lambda x: x[1]['count'],
+        reverse=True
+    )
+    num_rotas = len(rotas_ordenadas)
+    rotas_labels = {}
+    for idx, (rota_hash, _) in enumerate(rotas_ordenadas, 1):
+        label = f"Rota {idx}"
+        if rota_hash == rota_principal_hash:
+            label += " (Principal)"
+        rotas_labels[rota_hash] = label
+
+    md.append(f"**Total de rotas detectadas**: {num_rotas}\n\n")
+
+    principal_stats = analise_rotas['rotas_unicas'][rota_principal_hash]
+    perda_principal = (principal_stats['com_perda'] / principal_stats['count'] * 100) if principal_stats['count'] > 0 else 0.0
+    md.append(
+        f"**Rota principal:** {rotas_labels[rota_principal_hash]} = "
+        f"{resumir_rota_para_md(rota_principal_hash, principal_stats)}; "
+        f"perda {perda_principal:.1f}% em {principal_stats['count']} testes.\n"
+    )
+
+    if num_rotas > 1:
+        rota_alt_hash, rota_alt_stats = next(((h, s) for h, s in rotas_ordenadas if h != rota_principal_hash), (None, None))
+        if rota_alt_hash:
+            perda_alt = (rota_alt_stats['com_perda'] / rota_alt_stats['count'] * 100) if rota_alt_stats['count'] > 0 else 0.0
+            diff = descrever_diferenca_rotas(
+                principal_stats.get('ips') or rota_principal_hash.split(' -> '),
+                rota_alt_stats.get('ips') or rota_alt_hash.split(' -> ')
+            )
+            diff_texto = f" ({diff})" if diff else ""
+            md.append(
+                f"**Alternativas:** {num_rotas - 1} rota(s). "
+                f"Mais usada: {rotas_labels[rota_alt_hash]} = {resumir_rota_para_md(rota_alt_hash, rota_alt_stats)}{diff_texto}; "
+                f"perda {perda_alt:.1f}% em {rota_alt_stats['count']} testes.\n\n"
+            )
+    else:
+        md.append("**Alternativas:** nenhuma rota alternativa observada.\n\n")
+
+    if num_rotas > 1:
+        md.append("**Rotas identificadas**:\n\n")
+        md.append("| Rota | Ocorrências | Com Perda | Sem Perda | Taxa de Perda |\n")
+        md.append("|------|-------------|-----------|-----------|---------------|\n")
+
+        for idx, (rota_hash, stats) in enumerate(rotas_ordenadas[:limite_rotas], 1):
+            taxa_perda = (stats['com_perda'] / stats['count'] * 100) if stats['count'] > 0 else 0.0
+            nome_rota = rotas_labels.get(rota_hash, f"Rota {idx}")
+            trecho_rota = resumir_rota_para_md(rota_hash, stats)
+
+            md.append(
+                f"| {nome_rota} - {trecho_rota} | {stats['count']} | "
+                f"{stats['com_perda']} | {stats['sem_perda']} | {taxa_perda:.1f}% |\n"
+            )
+
+        md.append("\n")
+
+    md.append(f"**Correlação Rota vs Perda de Pacotes**: {analise_rotas['correlacao']['texto']}\n\n")
+
+    if analise_rotas['mudancas_rota']:
+        total_mudancas = len(analise_rotas['mudancas_rota'])
+        mudancas_com_perda = sum(1 for m in analise_rotas['mudancas_rota'] if m['teve_perda'])
+
+        md.append(f"**Mudanças de rota detectadas**: {total_mudancas} ({mudancas_com_perda} associadas a perda de pacotes)\n\n")
+        md.append("*O que mudou*:\n\n")
+
+        mudancas_recentes = analise_rotas['mudancas_rota'][-5:]
+        for mudanca in mudancas_recentes:
+            timestamp = mudanca['timestamp'].strftime('%d/%m às %H:%M')
+            rota_anterior_label = rotas_labels.get(mudanca['rota_anterior'], 'Rota anterior')
+            rota_nova_label = rotas_labels.get(mudanca['rota_nova'], 'Rota nova')
+            diff = descrever_diferenca_rotas(
+                analise_rotas['rotas_unicas'].get(mudanca['rota_anterior'], {}).get('ips', []),
+                analise_rotas['rotas_unicas'].get(mudanca['rota_nova'], {}).get('ips', [])
+            )
+            diff_texto = f"; {diff}" if diff else ""
+            perda_txt = "com perda de pacotes" if mudanca['teve_perda'] else "sem perda registrada"
+
+            md.append(f"- {timestamp}: {rota_anterior_label} -> {rota_nova_label} ({perda_txt}{diff_texto})\n")
+        md.append("\n")
+    else:
+        md.append("Nenhuma mudança de rota detectada.\n\n")
+
+    return ''.join(md)
+
+
+def analisar_dia_semana(dados_lista, usar_externo=False):
     """
     Agrupa dados por dia da semana e compara padrões
 
     Args:
         dados_lista: Lista de dados de testes
+        usar_externo: Se True, usa ping_externo (8.8.8.8) em vez de ping_aghuse
 
     Returns:
         list: [{'dia', 'latencia_media', 'vs_media_geral', 'pior_horario', 'pior_latencia', 'testes'}]
     """
     dias_semana = {i: {'latencias': [], 'testes': 0} for i in range(7)}
     nomes_dias = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+    campo_ping = 'ping_externo' if usar_externo else 'ping_aghuse'
 
     # Agrupar dados por dia da semana
     for dado in dados_lista:
-        if not dado.get('datetime') or dado.get('ping_aghuse', {}).get('media') is None:
+        if not dado.get('datetime') or dado.get(campo_ping, {}).get('media') is None:
             continue
 
         dia = dado['datetime'].weekday()  # 0=Segunda, 6=Domingo
-        lat = dado['ping_aghuse']['media']
+        lat = dado[campo_ping]['media']
 
         dias_semana[dia]['latencias'].append(lat)
         dias_semana[dia]['testes'] += 1
@@ -1190,11 +1352,11 @@ def analisar_dia_semana(dados_lista):
         media_dia = sum(lats) / len(lats)
 
         # Encontrar pior horário desse dia da semana
-        piores = [(dado['datetime'].hour, dado['ping_aghuse']['media'])
+        piores = [(dado['datetime'].hour, dado[campo_ping]['media'])
                   for dado in dados_lista
                   if (dado.get('datetime') and
                       dado['datetime'].weekday() == i and
-                      dado.get('ping_aghuse', {}).get('media') is not None)]
+                      dado.get(campo_ping, {}).get('media') is not None)]
 
         if piores:
             pior = max(piores, key=lambda x: x[1])
@@ -1518,6 +1680,7 @@ def gerar_relatorio_semanal(dados_por_dia, domingo=None, sabado=None):
 
     # 4. Análise por Dia da Semana
     analise_dias_semana = analisar_dia_semana(todos_dados)
+    analise_dias_semana_externo = analisar_dia_semana(todos_dados, usar_externo=True)
     if analise_dias_semana:
         md.append("## Análise por Dia da Semana\n\n")
         md.append("| Dia | Latência Média | vs. Média Geral | Pior Horário | Testes |\n")
@@ -1540,8 +1703,43 @@ def gerar_relatorio_semanal(dados_por_dia, domingo=None, sabado=None):
                 md.append(f"{dia['testes']} |\n")
         md.append("\n")
 
+    if analise_dias_semana_externo:
+        md.append("### Análise por Dia da Semana - Rede Externa (8.8.8.8)\n\n")
+        md.append("| Dia | Latência Média | vs. Média Geral | Pior Horário | Testes |\n")
+        md.append("|-----|----------------|-----------------|--------------|--------|\n")
+        for dia in analise_dias_semana_externo:
+            if dia['testes'] == 0:
+                md.append(f"| {dia['dia']} | - | - | - | 0 |\n")
+            elif dia['testes'] < 10:
+                md.append(f"| {dia['dia']} | {dia['latencia_media']:.1f}ms ⚠️ | ")
+                md.append(f"{dia['vs_media_geral']:+.1f}% | ")
+                md.append(f"{dia['pior_horario']:02d}h ({dia['pior_latencia']:.1f}ms) | ")
+                md.append(f"{dia['testes']} |\n")
+            else:
+                md.append(f"| {dia['dia']} | {dia['latencia_media']:.1f}ms | ")
+                md.append(f"{dia['vs_media_geral']:+.1f}% | ")
+                md.append(f"{dia['pior_horario']:02d}h ({dia['pior_latencia']:.1f}ms) | ")
+                md.append(f"{dia['testes']} |\n")
+        md.append("\n")
+
     # 5. Detecção de Anomalias, Horários de Pico e Análise de Rotas
-    anomalias = detectar_anomalias(todos_dados, stats_latencia_hora)
+    anomalias_gerais = detectar_anomalias(todos_dados, stats_latencia_hora)
+
+    # Rodar detecção por dia para não diluir anomalias em períodos longos
+    anomalias_dia = []
+    for dia, dados_dia in dados_por_dia.items():
+        stats_dia = analisar_latencia_por_horario(dados_dia)
+        anomalias_dia.extend(detectar_anomalias(dados_dia, stats_dia))
+
+    # Mesclar e remover duplicados por timestamp
+    anomalias = []
+    vistos = set()
+    for anom in sorted(anomalias_gerais + anomalias_dia, key=lambda x: x['timestamp']):
+        key = anom['timestamp']
+        if key not in vistos:
+            vistos.add(key)
+            anomalias.append(anom)
+
     picos = detectar_horarios_pico(stats_latencia_hora)
     analise_rotas = analisar_rotas_tracert(todos_dados)
 
@@ -1560,61 +1758,13 @@ def gerar_relatorio_semanal(dados_por_dia, domingo=None, sabado=None):
         md.append("Nenhum período de pico identificado. ✅\n\n")
 
     # 5.2 Análise de Rotas e Correlação com Perda de Pacotes
-    md.append("### Análise de Rotas (Tracert)\n\n")
-
-    if analise_rotas['rota_principal']:
-        num_rotas = len(analise_rotas['rotas_unicas'])
-        md.append(f"**Total de rotas detectadas**: {num_rotas}\n\n")
-
-        if num_rotas > 1:
-            md.append("**Rotas identificadas**:\n\n")
-            md.append("| Rota | Ocorrências | Com Perda | Sem Perda | Taxa de Perda |\n")
-            md.append("|------|-------------|-----------|-----------|---------------|\n")
-
-            # Ordenar rotas por ocorrência
-            rotas_ordenadas = sorted(
-                analise_rotas['rotas_unicas'].items(),
-                key=lambda x: x[1]['count'],
-                reverse=True
-            )
-
-            for idx, (rota_hash, stats) in enumerate(rotas_ordenadas[:5], 1):
-                # Simplificar rota para exibição
-                ips = rota_hash.split(' -> ')
-                rota_simples = f"{ips[0]} -> ... -> {ips[-1]}" if len(ips) > 3 else rota_hash
-                taxa_perda = (stats['com_perda'] / stats['count'] * 100) if stats['count'] > 0 else 0
-                principal = " (Principal)" if rota_hash == analise_rotas['rota_principal'] else ""
-
-                md.append(f"| Rota {idx}{principal} | {stats['count']} | {stats['com_perda']} | {stats['sem_perda']} | {taxa_perda:.1f}% |\n")
-
-            md.append("\n")
-
-        # Correlação
-        md.append(f"**Correlação Rota vs Perda de Pacotes**: {analise_rotas['correlacao']['texto']}\n\n")
-
-        # Mudanças de rota
-        if analise_rotas['mudancas_rota']:
-            total_mudancas = len(analise_rotas['mudancas_rota'])
-            mudancas_com_perda = sum(1 for m in analise_rotas['mudancas_rota'] if m['teve_perda'])
-
-            md.append(f"**Mudanças de rota detectadas**: {total_mudancas} ")
-            md.append(f"({mudancas_com_perda} associadas a perda de pacotes)\n\n")
-
-            if mudancas_com_perda > 0:
-                md.append("*Últimas mudanças de rota com perda*:\n\n")
-                mudancas_recentes = [m for m in analise_rotas['mudancas_rota'] if m['teve_perda']][-5:]
-                for mudanca in mudancas_recentes:
-                    timestamp = mudanca['timestamp'].strftime('%d/%m às %H:%M')
-                    md.append(f"- {timestamp}\n")
-                md.append("\n")
-    else:
-        md.append("Dados de tracert insuficientes para análise.\n\n")
+    md.append(gerar_secao_rotas_markdown(analise_rotas))
 
     # 5.3 Anomalias de Latência
     md.append("### Anomalias de Latência\n\n")
     if anomalias:
         md.append(f"Total de {len(anomalias)} anomalia(s) detectada(s):\n\n")
-        for anomalia in anomalias[:10]:  # Top 10
+        for anomalia in anomalias:  # listar todas para permitir paginação no HTML
             timestamp = anomalia['timestamp'].strftime('%d/%m às %H:%M')
             if anomalia['tipo'] == 'desvio_padrao':
                 md.append(f"⚠️ **{timestamp}**: Latência {anomalia['latencia']}ms ")
@@ -1624,23 +1774,40 @@ def gerar_relatorio_semanal(dados_por_dia, domingo=None, sabado=None):
                 md.append(f"⚠️ **{timestamp}**: Latência {anomalia['latencia']}ms ")
                 md.append(f"({anomalia['percentual']:.0f}% do esperado {anomalia['esperado']:.1f}ms) ")
                 md.append(f"[Severidade: {anomalia['severidade']}]\n")
-
-        if len(anomalias) > 10:
-            md.append(f"\n*Exibindo 10 de {len(anomalias)} anomalias. Anomalias indicam desvios significativos do padrão normal.*\n")
     else:
         md.append("Nenhuma anomalia de latência detectada no período. ✅\n")
     md.append("\n")
 
     # 6. Distribuição de Latência
-    todas_latencias = [d['ping_aghuse']['media'] for d in todos_dados
-                       if d.get('ping_aghuse', {}).get('media') is not None]
+    todas_latencias = [
+        d['ping_aghuse']['media']
+        for d in todos_dados
+        if d.get('ping_aghuse', {}).get('media') is not None
+    ]
+    todas_latencias_externo = [
+        d.get('ping_externo', {}).get('media')
+        for d in todos_dados
+        if d.get('ping_externo', {}).get('media') is not None
+    ]
+
     distribuicao = calcular_distribuicao(todas_latencias)
+    distribuicao_externo = calcular_distribuicao(todas_latencias_externo)
+
     md.append("## Distribuição de Latência\n\n")
+    md.append("### AGHUSE (10.252.17.132)\n\n")
     md.append("| Faixa | Frequência | Percentual |\n")
     md.append("|-------|-----------|------------|\n")
     for bin in distribuicao:
         md.append(f"| {bin['faixa']} | {bin['frequencia']} | {bin['percentual']}% |\n")
     md.append("\n")
+
+    if distribuicao_externo:
+        md.append("### Rede Externa (8.8.8.8)\n\n")
+        md.append("| Faixa | Frequência | Percentual |\n")
+        md.append("|-------|-----------|------------|\n")
+        for bin in distribuicao_externo:
+            md.append(f"| {bin['faixa']} | {bin['frequencia']} | {bin['percentual']}% |\n")
+        md.append("\n")
 
     # ========================================================================
 
@@ -1817,6 +1984,8 @@ def gerar_relatorio_geral(dados_por_dia):
 
     # 4. Análise por Dia da Semana
     analise_dias = analisar_dia_semana(todos_dados)
+    analise_dias_externo = analisar_dia_semana(todos_dados, usar_externo=True)
+
     md.append("## Análise por Dia da Semana\n\n")
     md.append("| Dia | Latência Média | vs. Média Geral | Pior Horário | Testes |\n")
     md.append("|-----|----------------|-----------------|--------------|--------|\n")
@@ -1838,8 +2007,43 @@ def gerar_relatorio_geral(dados_por_dia):
             md.append(f"{dia['testes']} |\n")
     md.append("\n")
 
+    md.append("### Análise por Dia da Semana - Rede Externa (8.8.8.8)\n\n")
+    md.append("| Dia | Latência Média | vs. Média Geral | Pior Horário | Testes |\n")
+    md.append("|-----|----------------|-----------------|--------------|--------|\n")
+    for dia in analise_dias_externo:
+        if dia['testes'] == 0:
+            md.append(f"| {dia['dia']} | - | - | - | 0 |\n")
+        elif dia['testes'] < 10:
+            md.append(f"| {dia['dia']} | {dia['latencia_media']:.1f}ms ⚠️ | ")
+            md.append(f"{dia['vs_media_geral']:+.1f}% | ")
+            md.append(f"{dia['pior_horario']:02d}h ({dia['pior_latencia']:.1f}ms) | ")
+            md.append(f"{dia['testes']} |\n")
+        else:
+            md.append(f"| {dia['dia']} | {dia['latencia_media']:.1f}ms | ")
+            md.append(f"{dia['vs_media_geral']:+.1f}% | ")
+            md.append(f"{dia['pior_horario']:02d}h ({dia['pior_latencia']:.1f}ms) | ")
+            md.append(f"{dia['testes']} |\n")
+    md.append("\n")
+
     # 5. Detecção de Anomalias, Horários de Pico e Análise de Rotas
-    anomalias = detectar_anomalias(todos_dados, stats_latencia_hora)
+    anomalias_gerais = detectar_anomalias(todos_dados, stats_latencia_hora)
+
+    # Rodar detecção por dia para não diluir anomalias em períodos longos
+    anomalias_dia = []
+    for dia in dias_ordenados:
+        dados_dia = dados_por_dia[dia]
+        stats_dia = analisar_latencia_por_horario(dados_dia)
+        anomalias_dia.extend(detectar_anomalias(dados_dia, stats_dia))
+
+    # Mesclar e remover duplicados por timestamp
+    anomalias = []
+    vistos = set()
+    for anom in sorted(anomalias_gerais + anomalias_dia, key=lambda x: x['timestamp']):
+        key = anom['timestamp']
+        if key not in vistos:
+            vistos.add(key)
+            anomalias.append(anom)
+
     picos = detectar_horarios_pico(stats_latencia_hora)
     analise_rotas = analisar_rotas_tracert(todos_dados)
 
@@ -1858,61 +2062,13 @@ def gerar_relatorio_geral(dados_por_dia):
         md.append("Nenhum período de pico identificado. ✅\n\n")
 
     # 5.2 Análise de Rotas e Correlação com Perda de Pacotes
-    md.append("### Análise de Rotas (Tracert)\n\n")
-
-    if analise_rotas['rota_principal']:
-        num_rotas = len(analise_rotas['rotas_unicas'])
-        md.append(f"**Total de rotas detectadas**: {num_rotas}\n\n")
-
-        if num_rotas > 1:
-            md.append("**Rotas identificadas**:\n\n")
-            md.append("| Rota | Ocorrências | Com Perda | Sem Perda | Taxa de Perda |\n")
-            md.append("|------|-------------|-----------|-----------|---------------|\n")
-
-            # Ordenar rotas por ocorrência
-            rotas_ordenadas = sorted(
-                analise_rotas['rotas_unicas'].items(),
-                key=lambda x: x[1]['count'],
-                reverse=True
-            )
-
-            for idx, (rota_hash, stats) in enumerate(rotas_ordenadas[:5], 1):
-                # Simplificar rota para exibição
-                ips = rota_hash.split(' -> ')
-                rota_simples = f"{ips[0]} -> ... -> {ips[-1]}" if len(ips) > 3 else rota_hash
-                taxa_perda = (stats['com_perda'] / stats['count'] * 100) if stats['count'] > 0 else 0
-                principal = " (Principal)" if rota_hash == analise_rotas['rota_principal'] else ""
-
-                md.append(f"| Rota {idx}{principal} | {stats['count']} | {stats['com_perda']} | {stats['sem_perda']} | {taxa_perda:.1f}% |\n")
-
-            md.append("\n")
-
-        # Correlação
-        md.append(f"**Correlação Rota vs Perda de Pacotes**: {analise_rotas['correlacao']['texto']}\n\n")
-
-        # Mudanças de rota
-        if analise_rotas['mudancas_rota']:
-            total_mudancas = len(analise_rotas['mudancas_rota'])
-            mudancas_com_perda = sum(1 for m in analise_rotas['mudancas_rota'] if m['teve_perda'])
-
-            md.append(f"**Mudanças de rota detectadas**: {total_mudancas} ")
-            md.append(f"({mudancas_com_perda} associadas a perda de pacotes)\n\n")
-
-            if mudancas_com_perda > 0:
-                md.append("*Últimas mudanças de rota com perda*:\n\n")
-                mudancas_recentes = [m for m in analise_rotas['mudancas_rota'] if m['teve_perda']][-5:]
-                for mudanca in mudancas_recentes:
-                    timestamp = mudanca['timestamp'].strftime('%d/%m às %H:%M')
-                    md.append(f"- {timestamp}\n")
-                md.append("\n")
-    else:
-        md.append("Dados de tracert insuficientes para análise.\n\n")
+    md.append(gerar_secao_rotas_markdown(analise_rotas))
 
     # 5.3 Anomalias de Latência
     md.append("### Anomalias de Latência\n\n")
     if anomalias:
         md.append(f"Total de {len(anomalias)} anomalia(s) detectada(s):\n\n")
-        for anomalia in anomalias[:10]:  # Top 10
+        for anomalia in anomalias:  # listar todas para permitir paginação no HTML
             timestamp = anomalia['timestamp'].strftime('%d/%m às %H:%M')
             if anomalia['tipo'] == 'desvio_padrao':
                 md.append(f"⚠️ **{timestamp}**: Latência {anomalia['latencia']}ms ")
@@ -1926,21 +2082,39 @@ def gerar_relatorio_geral(dados_por_dia):
                 if anomalia['severidade'] == 'alta':
                     md.append(" 🔴 **ALTA**")
                 md.append("\n")
-        if len(anomalias) > 10:
-            md.append(f"\n*Exibindo 10 de {len(anomalias)} anomalias. Anomalias indicam desvios significativos do padrão normal.*\n")
     else:
         md.append("Nenhuma anomalia de latência detectada no período. ✅\n")
     md.append("\n")
 
     # 6. Distribuição de Latência
-    todas_latencias = [d['ping_aghuse']['media'] for d in todos_dados if d['ping_aghuse']['media'] is not None]
+    todas_latencias = [
+        d['ping_aghuse']['media']
+        for d in todos_dados
+        if d['ping_aghuse']['media'] is not None
+    ]
+    todas_latencias_externo = [
+        d.get('ping_externo', {}).get('media')
+        for d in todos_dados
+        if d.get('ping_externo', {}).get('media') is not None
+    ]
     distribuicao = calcular_distribuicao(todas_latencias)
+    distribuicao_externo = calcular_distribuicao(todas_latencias_externo)
+
     md.append("## Distribuição de Latência\n\n")
+    md.append("### AGHUSE (10.252.17.132)\n\n")
     md.append("| Faixa | Frequência | Percentual |\n")
     md.append("|-------|-----------|------------|\n")
     for bin_data in distribuicao:
         md.append(f"| {bin_data['faixa']} | {bin_data['frequencia']} | {bin_data['percentual']}% |\n")
     md.append("\n")
+
+    if distribuicao_externo:
+        md.append("### Rede Externa (8.8.8.8)\n\n")
+        md.append("| Faixa | Frequência | Percentual |\n")
+        md.append("|-------|-----------|------------|\n")
+        for bin_data in distribuicao_externo:
+            md.append(f"| {bin_data['faixa']} | {bin_data['frequencia']} | {bin_data['percentual']}% |\n")
+        md.append("\n")
 
     # Análise e Conclusão
     md.append("## Análise e Conclusão\n\n")

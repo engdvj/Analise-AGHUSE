@@ -1,0 +1,189 @@
+=========================================================
+TESTE DE CONECTIVIDADE - AGHUSE
+ID_TESTE   : 2025-12-10_12-29-00
+DATA_TESTE : 10/12/2025
+HORA_TESTE : 12:29:00
+=========================================================
+
+[1/7] INFORMACOES GERAIS
+DATA_TESTE : 10/12/2025
+HORA_TESTE : 12:29:00
+---------------------------------------------------------
+
+[2/7] IPCONFIG /ALL
+---------------------------------------------------------
+
+Configuraá∆o de IP do Windows
+
+   Nome do host. . . . . . . . . . . . . . . . : TI-T03
+   Sufixo DNS prim†rio . . . . . . . . . . . . : chvc.local
+   Tipo de n¢. . . . . . . . . . . . . . . . . : h°brido
+   Roteamento de IP ativado. . . . . . . . . . : n∆o
+   Proxy WINS ativado. . . . . . . . . . . . . : n∆o
+   Lista de pesquisa de sufixo DNS . . . . . . : chvc.local
+
+Adaptador Ethernet Ethernet:
+
+   Sufixo DNS espec°fico de conex∆o. . . . . . : 
+   Descriá∆o . . . . . . . . . . . . . . . . . : Realtek PCIe GbE Family Controller
+   Endereáo F°sico . . . . . . . . . . . . . . : 1C-69-7A-E8-60-12
+   DHCP Habilitado . . . . . . . . . . . . . . : N∆o
+   Configuraá∆o Autom†tica Habilitada. . . . . : Sim
+   Endereáo IPv6 de link local . . . . . . . . : fe80::8df7:5a58:703b:51de%10(Preferencial) 
+   Endereáo IPv4. . . . . . . .  . . . . . . . : 10.17.200.11(Preferencial) 
+   M†scara de Sub-rede . . . . . . . . . . . . : 255.255.254.0
+   Gateway Padr∆o. . . . . . . . . . . . . . . : 10.17.201.254
+   IAID de DHCPv6. . . . . . . . . . . . . . . : 253520250
+   DUID de Cliente DHCPv6. . . . . . . . . . . : 00-01-00-01-2F-CA-37-6D-1C-69-7A-E8-60-12
+   Servidores DNS. . . . . . . . . . . . . . . : 10.17.133.1
+                                                 10.2.8.187
+   NetBIOS em Tcpip. . . . . . . . . . . . . . : Habilitado
+
+Adaptador de Rede sem Fio Wi-Fi:
+
+   Estado da m°dia. . . . . . . . . . . . . .  : m°dia desconectada
+   Sufixo DNS espec°fico de conex∆o. . . . . . : 
+   Descriá∆o . . . . . . . . . . . . . . . . . : Intel(R) Wireless-AC 9462
+   Endereáo F°sico . . . . . . . . . . . . . . : 5C-CD-5B-F2-7C-27
+   DHCP Habilitado . . . . . . . . . . . . . . : Sim
+   Configuraá∆o Autom†tica Habilitada. . . . . : Sim
+
+Adaptador de Rede sem Fio Conex∆o Local* 8:
+
+   Estado da m°dia. . . . . . . . . . . . . .  : m°dia desconectada
+   Sufixo DNS espec°fico de conex∆o. . . . . . : 
+   Descriá∆o . . . . . . . . . . . . . . . . . : Microsoft Wi-Fi Direct Virtual Adapter
+   Endereáo F°sico . . . . . . . . . . . . . . : 5C-CD-5B-F2-7C-28
+   DHCP Habilitado . . . . . . . . . . . . . . : Sim
+   Configuraá∆o Autom†tica Habilitada. . . . . : Sim
+
+Adaptador de Rede sem Fio Conex∆o Local* 10:
+
+   Estado da m°dia. . . . . . . . . . . . . .  : m°dia desconectada
+   Sufixo DNS espec°fico de conex∆o. . . . . . : 
+   Descriá∆o . . . . . . . . . . . . . . . . . : Microsoft Wi-Fi Direct Virtual Adapter #2
+   Endereáo F°sico . . . . . . . . . . . . . . : 5E-CD-5B-F2-7C-27
+   DHCP Habilitado . . . . . . . . . . . . . . : Sim
+   Configuraá∆o Autom†tica Habilitada. . . . . : Sim
+
+---------------------------------------------------------
+
+[3/7] PING aghuse.saude.ba.gov.br -n 20
+---------------------------------------------------------
+
+Disparando aghuse.saude.ba.gov.br [10.252.17.132] com 32 bytes de dados:
+Resposta de 10.252.17.132: bytes=32 tempo=55ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=56ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=55ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=55ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+
+Estat°sticas do Ping para 10.252.17.132:
+    Pacotes: Enviados = 20, Recebidos = 20, Perdidos = 0 (0% de
+             perda),
+Aproximar um n£mero redondo de vezes em milissegundos:
+    M°nimo = 54ms, M†ximo = 56ms, MÇdia = 54ms
+
+---------------------------------------------------------
+
+[4/7] TRACERT -d aghuse.saude.ba.gov.br
+---------------------------------------------------------
+
+Rastreando a rota para aghuse.saude.ba.gov.br [10.252.17.132]
+com no m†ximo 30 saltos:
+
+  1    <1 ms    <1 ms    <1 ms  10.17.201.254 
+  2    <1 ms    <1 ms    <1 ms  10.17.250.114 
+  3    54 ms    54 ms    54 ms  10.164.255.40 
+  4    61 ms    55 ms    55 ms  10.2.255.41 
+  5    54 ms    54 ms    54 ms  10.2.222.220 
+  6    59 ms    54 ms    54 ms  10.252.17.132 
+
+Rastreamento conclu°do.
+
+---------------------------------------------------------
+
+[5/7] PING 10.252.17.132 -n 20
+---------------------------------------------------------
+
+Disparando 10.252.17.132 com 32 bytes de dados:
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=62ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=55ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+Resposta de 10.252.17.132: bytes=32 tempo=54ms TTL=59
+
+Estat°sticas do Ping para 10.252.17.132:
+    Pacotes: Enviados = 20, Recebidos = 20, Perdidos = 0 (0% de
+             perda),
+Aproximar um n£mero redondo de vezes em milissegundos:
+    M°nimo = 54ms, M†ximo = 62ms, MÇdia = 54ms
+
+---------------------------------------------------------
+
+[6/7] PING 8.8.8.8 -n 20
+---------------------------------------------------------
+
+Disparando 8.8.8.8 com 32 bytes de dados:
+Resposta de 8.8.8.8: bytes=32 tempo=34ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=34ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=37ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=33ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=33ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=33ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=34ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=33ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=34ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=33ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=33ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=34ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=33ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=45ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=41ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=33ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=34ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=33ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=33ms TTL=114
+Resposta de 8.8.8.8: bytes=32 tempo=33ms TTL=114
+
+Estat°sticas do Ping para 8.8.8.8:
+    Pacotes: Enviados = 20, Recebidos = 20, Perdidos = 0 (0% de
+             perda),
+Aproximar um n£mero redondo de vezes em milissegundos:
+    M°nimo = 33ms, M†ximo = 45ms, MÇdia = 34ms
+
+---------------------------------------------------------
+
+[7/7] FIM DO TESTE DE CONECTIVIDADE
+=========================================================
+

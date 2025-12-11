@@ -2,11 +2,11 @@
 
 ## Status do Dia
 
-**Conexão: 99.24%** - BOM
+**Conexão: 99.15%** - BOM
 
 **Problemas:**
-- 16 horários com perda de conexão
-- 132 horários com lentidão
+- 41 horários com perda de conexão
+- 288 horários com lentidão
 
 ## Desempenho por Horário
 
@@ -23,6 +23,19 @@
 | 08h | 56.9 (56-60) | 52.2 (50-56) | Regular [AG:1pkt] |
 | 09h | 56.8 (56-60) | 54.8 (53-57) | Regular [AG:1pkt, EX:1pkt] |
 | 10h | 57.2 (56-59) | 52.3 (41-70) | Regular [AG:2pkt] |
+| 11h | 56.1 (55-58) | 50.1 (34-63) | Regular [AG:2pkt, EX:2pkt] |
+| 12h | 55.2 (54-58) | 36.2 (33-45) | Regular [AG:1pkt, EX:1pkt] |
+| 13h | 54.0 (51-57) | 35.5 (33-39) | Regular [AG:2pkt, EX:3pkt] |
+| 14h | 54.5 (49-64) | 42.6 (34-57) | Ruim [AG:4pkt, EX:1pkt] |
+| 15h | 54.8 (53-57) | 49.5 (48-51) | Ruim [AG:3pkt, EX:1pkt] |
+| 16h | 54.8 (50-57) | 49.7 (49-51) | Regular [AG:2pkt, EX:4pkt] |
+| 17h | 54.1 (49-59) | 49.5 (48-55) | Regular |
+| 18h | 51.8 (50-55) | 48.8 (48-50) | Regular [AG:3pkt] |
+| 19h | 49.8 (49-52) | 38.2 (34-50) | Bom [EX:2pkt] |
+| 20h | 49.0 (49-49) | 34.6 (34-35) | Bom |
+| 21h | 49.2 (49-50) | 34.6 (34-35) | Bom |
+| 22h | 49.4 (49-50) | 34.7 (34-36) | Bom |
+| 23h | 49.4 (49-51) | 36.9 (34-50) | Regular [AG:1pkt, EX:1pkt] |
 
 **Gráfico Comparativo de Latência:**
 
@@ -50,27 +63,53 @@ AGHUSE vs Rede Externa
      │EX: ████████████████████████████ 54.8ms
 10h │AG: ██████████████████████████████ 57.2ms
      │EX: ███████████████████████████ 52.3ms
+11h │AG: ██████████████████████████████ 56.1ms
+     │EX: ██████████████████████████ 50.1ms
+12h │AG: ██████████████████████████████ 55.2ms
+     │EX: ███████████████████ 36.2ms
+13h │AG: ██████████████████████████████ 54.0ms
+     │EX: ███████████████████ 35.5ms
+14h │AG: ██████████████████████████████ 54.5ms
+     │EX: ███████████████████████ 42.6ms
+15h │AG: ██████████████████████████████ 54.8ms
+     │EX: ███████████████████████████ 49.5ms
+16h │AG: ██████████████████████████████ 54.8ms
+     │EX: ███████████████████████████ 49.7ms
+17h │AG: ██████████████████████████████ 54.1ms
+     │EX: ███████████████████████████ 49.5ms
+18h │AG: ██████████████████████████████ 51.8ms
+     │EX: ████████████████████████████ 48.8ms
+19h │AG: ██████████████████████████████ 49.8ms
+     │EX: ███████████████████████ 38.2ms
+20h │AG: ██████████████████████████████ 49.0ms
+     │EX: █████████████████████ 34.6ms
+21h │AG: ██████████████████████████████ 49.2ms
+     │EX: █████████████████████ 34.6ms
+22h │AG: ██████████████████████████████ 49.4ms
+     │EX: █████████████████████ 34.7ms
+23h │AG: ██████████████████████████████ 49.4ms
+     │EX: ██████████████████████ 36.9ms
 ```
 
 ## Análise Técnica
 
-**Tempo de resposta:** Típico 49.0ms | 95% dos casos abaixo de 62.0ms
+**Tempo de resposta:** Típico 51.0ms | 95% dos casos abaixo de 59.0ms
 
 **Estabilidade:** Excelente (variação 1.24ms)
 
 **Comparativo de destinos:**
-- AGHUSE: 52.9ms
-- Rede interna: 52.8ms
-- Internet: 49.7ms
+- AGHUSE: 52.8ms
+- Rede interna: 52.6ms
+- Internet: 45.3ms
 
 ## Detalhes de Problemas
 
-**Perda de Pacotes:** 16 ocorrências
-- 00:24:00, 01:34:00, 03:04:01, 03:24:01, 03:49:01, 06:44:00, 07:19:00, 09:19:00 e mais 8
+**Perda de Pacotes:** 41 ocorrências
+- 00:24:00, 01:34:00, 03:04:01, 03:24:01, 03:49:01, 06:44:00, 07:19:00, 09:19:00 e mais 33
 
 ## Resumo
 
-**Conexão**: 99.24% - Boa
+**Conexão**: 99.15% - Boa
 
-**Resumo por Horário**: 3/11 bom | 8/11 regular
+**Resumo por Horário**: 7/24 bom | 15/24 regular | 2/24 ruim
 

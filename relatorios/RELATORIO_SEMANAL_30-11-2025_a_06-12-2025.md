@@ -227,6 +227,18 @@ Total de 86 teste(s) com perda de pacotes:
 | Sábado | 51.7ms | +19.6% | 06h (70.0ms) | 288 |
 | Domingo | - | - | - | 0 |
 
+### Análise por Dia da Semana - Rede Externa (8.8.8.8)
+
+| Dia | Latência Média | vs. Média Geral | Pior Horário | Testes |
+|-----|----------------|-----------------|--------------|--------|
+| Segunda | - | - | - | 0 |
+| Terça | - | - | - | 0 |
+| Quarta | 45.0ms | +3.8% | 21h (45.0ms) | 22 |
+| Quinta | 45.3ms | +4.6% | 18h (54.0ms) | 286 |
+| Sexta | 45.7ms | +5.5% | 16h (64.0ms) | 288 |
+| Sábado | 38.8ms | -10.4% | 14h (64.0ms) | 288 |
+| Domingo | - | - | - | 0 |
+
 ## Alertas de Anomalias
 
 ### Horários de Pico
@@ -239,31 +251,81 @@ Períodos com latência significativamente acima da média (>10%):
 
 **Total de rotas detectadas**: 2
 
+**Rota principal:** Rota 1 (Principal) = 10.17.201.254 -> 10.17.250.114 -> ... -> 10.2.222.220 -> 10.252.17.132 (6 saltos); perda 8.6% em 880 testes.
+**Alternativas:** 1 rota(s). Mais usada: Rota 2 = 10.17.201.254 -> 10.17.250.114 -> ... -> 10.252.17.132 -> 10.252.17.132 (7 saltos) (mesmos hops iniciais, 1 salto(s) a mais); perda 25.0% em 4 testes.
+
 **Rotas identificadas**:
 
 | Rota | Ocorrências | Com Perda | Sem Perda | Taxa de Perda |
 |------|-------------|-----------|-----------|---------------|
-| Rota 1 (Principal) | 880 | 76 | 804 | 8.6% |
-| Rota 2 | 4 | 1 | 3 | 25.0% |
+| Rota 1 (Principal) - 10.17.201.254 -> 10.17.250.114 -> ... -> 10.2.222.220 -> 10.252.17.132 (6 saltos) | 880 | 76 | 804 | 8.6% |
+| Rota 2 - 10.17.201.254 -> 10.17.250.114 -> ... -> 10.252.17.132 -> 10.252.17.132 (7 saltos) | 4 | 1 | 3 | 25.0% |
 
-**Correlação Rota vs Perda de Pacotes**: Rotas alternativas apresentam 25.0% de perda vs 8.6% na rota principal. Possível instabilidade em rotas alternativas.
+**Correlação Rota vs Perda de Pacotes**: Rota principal: 8.6% de perda em 880 testes. Alternativas: 25.0% em 4 testes. Mudanças: 3 de 8 (38%) tiveram perda. Rotas alternativas mais instáveis que a principal.
 
 **Mudanças de rota detectadas**: 8 (3 associadas a perda de pacotes)
 
-*Últimas mudanças de rota com perda*:
+*O que mudou*:
 
-- 04/12 às 08:55
-- 04/12 às 12:40
-- 04/12 às 12:45
+- 04/12 às 11:25: Rota 2 -> Rota 1 (Principal) (sem perda registrada; mesmos hops iniciais, 1 salto(s) a menos)
+- 04/12 às 12:40: Rota 1 (Principal) -> Rota 2 (com perda de pacotes; mesmos hops iniciais, 1 salto(s) a mais)
+- 04/12 às 12:45: Rota 2 -> Rota 1 (Principal) (com perda de pacotes; mesmos hops iniciais, 1 salto(s) a menos)
+- 04/12 às 18:49: Rota 1 (Principal) -> Rota 2 (sem perda registrada; mesmos hops iniciais, 1 salto(s) a mais)
+- 04/12 às 18:54: Rota 2 -> Rota 1 (Principal) (sem perda registrada; mesmos hops iniciais, 1 salto(s) a menos)
 
 ### Anomalias de Latência
 
-Total de 2 anomalia(s) detectada(s):
+Total de 45 anomalia(s) detectada(s):
 
+⚠️ **04/12 às 13:44**: Latência 29ms (2.8σ acima do esperado 11.8ms) [Severidade: media]
 ⚠️ **04/12 às 15:14**: Latência 73ms (3.0σ acima do esperado 55.2ms) [Severidade: media]
 ⚠️ **04/12 às 17:44**: Latência 71ms (2.9σ acima do esperado 54.7ms) [Severidade: media]
+⚠️ **04/12 às 20:04**: Latência 54ms (2.7σ acima do esperado 52.2ms) [Severidade: media]
+⚠️ **04/12 às 21:29**: Latência 55ms (3.0σ acima do esperado 51.8ms) [Severidade: media]
+⚠️ **05/12 às 04:49**: Latência 51ms (2.7σ acima do esperado 49.3ms) [Severidade: media]
+⚠️ **05/12 às 05:24**: Latência 54ms (2.6σ acima do esperado 49.9ms) [Severidade: media]
+⚠️ **05/12 às 16:19**: Latência 68ms (3.3σ acima do esperado 51.7ms) [Severidade: alta]
+⚠️ **06/12 às 03:39**: Latência 52ms (2.9σ acima do esperado 50.2ms) [Severidade: media]
+⚠️ **06/12 às 13:19**: Latência 51ms (2.9σ acima do esperado 49.2ms) [Severidade: media]
+⚠️ **06/12 às 18:34**: Latência 57ms (3.0σ acima do esperado 54.4ms) [Severidade: media]
+⚠️ **07/12 às 03:19**: Latência 56ms (2.9σ acima do esperado 54.2ms) [Severidade: media]
+⚠️ **07/12 às 07:14**: Latência 55ms (3.3σ acima do esperado 54.1ms) [Severidade: alta]
+⚠️ **07/12 às 08:39**: Latência 56ms (2.7σ acima do esperado 54.3ms) [Severidade: media]
+⚠️ **07/12 às 09:34**: Latência 56ms (2.7σ acima do esperado 54.3ms) [Severidade: media]
+⚠️ **07/12 às 12:19**: Latência 60ms (3.1σ acima do esperado 55.2ms) [Severidade: alta]
+⚠️ **07/12 às 20:09**: Latência 59ms (3.3σ acima do esperado 58.1ms) [Severidade: alta]
+⚠️ **07/12 às 21:49**: Latência 62ms (3.2σ acima do esperado 58.2ms) [Severidade: alta]
+⚠️ **08/12 às 00:44**: Latência 64ms (3.3σ acima do esperado 50.3ms) [Severidade: alta]
+⚠️ **08/12 às 02:29**: Latência 50ms (3.3σ acima do esperado 49.1ms) [Severidade: alta]
+⚠️ **08/12 às 05:44**: Latência 50ms (3.3σ acima do esperado 49.1ms) [Severidade: alta]
+⚠️ **08/12 às 09:29**: Latência 68ms (3.0σ acima do esperado 53.7ms) [Severidade: media]
+⚠️ **08/12 às 10:59**: Latência 66ms (3.1σ acima do esperado 51.9ms) [Severidade: alta]
+⚠️ **08/12 às 14:34**: Latência 57ms (2.7σ acima do esperado 51.1ms) [Severidade: media]
+⚠️ **08/12 às 18:49**: Latência 57ms (3.1σ acima do esperado 51.9ms) [Severidade: alta]
+⚠️ **08/12 às 19:44**: Latência 70ms (3.0σ acima do esperado 53.6ms) [Severidade: media]
+⚠️ **08/12 às 20:04**: Latência 52ms (3.3σ acima do esperado 51.1ms) [Severidade: alta]
+⚠️ **08/12 às 23:39**: Latência 55ms (3.2σ acima do esperado 51.4ms) [Severidade: alta]
+⚠️ **09/12 às 00:09**: Latência 56ms (3.3σ acima do esperado 51.4ms) [Severidade: alta]
+⚠️ **09/12 às 01:54**: Latência 52ms (3.3σ acima do esperado 51.1ms) [Severidade: alta]
+⚠️ **09/12 às 02:54**: Latência 52ms (3.3σ acima do esperado 51.1ms) [Severidade: alta]
+⚠️ **09/12 às 05:59**: Latência 52ms (3.3σ acima do esperado 51.1ms) [Severidade: alta]
+⚠️ **09/12 às 07:34**: Latência 70ms (2.6σ acima do esperado 54.4ms) [Severidade: media]
+⚠️ **09/12 às 14:14**: Latência 76ms (3.0σ acima do esperado 67.7ms) [Severidade: media]
+⚠️ **09/12 às 15:09**: Latência 79ms (2.7σ acima do esperado 69.2ms) [Severidade: media]
+⚠️ **09/12 às 17:54**: Latência 72ms (3.2σ acima do esperado 53.7ms) [Severidade: alta]
+⚠️ **09/12 às 21:39**: Latência 58ms (3.0σ acima do esperado 52.8ms) [Severidade: alta]
+⚠️ **09/12 às 23:44**: Latência 52ms (2.8σ acima do esperado 49.0ms) [Severidade: media]
+⚠️ **10/12 às 03:24**: Latência 51ms (2.7σ acima do esperado 48.8ms) [Severidade: media]
+⚠️ **10/12 às 07:39**: Latência 60ms (3.2σ acima do esperado 56.4ms) [Severidade: alta]
+⚠️ **10/12 às 09:29**: Latência 67ms (2.9σ acima do esperado 59.0ms) [Severidade: media]
+⚠️ **10/12 às 10:49**: Latência 62ms (2.9σ acima do esperado 57.6ms) [Severidade: media]
+⚠️ **10/12 às 15:09**: Latência 64ms (3.0σ acima do esperado 55.6ms) [Severidade: media]
+⚠️ **10/12 às 23:24**: Latência 55ms (3.1σ acima do esperado 50.4ms) [Severidade: alta]
+⚠️ **11/12 às 00:44**: Latência 52ms (2.5σ acima do esperado 49.6ms) [Severidade: media]
 
 ## Distribuição de Latência
+
+### AGHUSE (10.252.17.132)
 
 | Faixa | Frequência | Percentual |
 |-------|-----------|------------|
@@ -271,6 +333,16 @@ Total de 2 anomalia(s) detectada(s):
 | 20-40ms | 2 | 0.2% |
 | 40-60ms | 663 | 75.0% |
 | 60-80ms | 42 | 4.8% |
+| 80+ms | 0 | 0.0% |
+
+### Rede Externa (8.8.8.8)
+
+| Faixa | Frequência | Percentual |
+|-------|-----------|------------|
+| 0-20ms | 0 | 0.0% |
+| 20-40ms | 161 | 18.2% |
+| 40-60ms | 720 | 81.4% |
+| 60-80ms | 3 | 0.3% |
 | 80+ms | 0 | 0.0% |
 
 ## Análise e Conclusão
